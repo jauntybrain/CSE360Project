@@ -12,7 +12,8 @@ import java.util.UUID;
  * </p>
  * 
  * <p>
- * Description: Manages the creation, validation, and redemption of invitation codes.
+ * Description: Manages the creation, validation, and redemption of invitation
+ * codes.
  * </p>
  * 
  * <p>
@@ -23,18 +24,19 @@ import java.util.UUID;
  * 
  */
 public class InvitationCodeService {
-	public static InvitationCodeService instance;
-	
+    public static InvitationCodeService instance;
+
     private static final String INVITATION_CODES_FILE = "invitationCodes.txt";
     private Map<String, InvitationCode> invitationCodes = new HashMap<>();
 
-     /**
-     * Private constructor to initialize the service and load invitation codes from local file.
+    /**
+     * Private constructor to initialize the service and load invitation codes from
+     * local file.
      */
     private InvitationCodeService() {
         loadInvitationCodesFromFile();
     }
-    
+
     /**
      * Returns the singleton instance of InvitationCodeService.
      * 
@@ -113,7 +115,8 @@ public class InvitationCodeService {
      * Retrieves the roles assigned to the invitation code.
      * 
      * @param code The invitation code.
-     * @return A list of roles assigned to the invitation code, or null if the code is invalid or used.
+     * @return A list of roles assigned to the invitation code, or null if the code
+     *         is invalid or used.
      */
     public List<Role> getRolesForInvitationCode(String code) {
         InvitationCode invitationCode = invitationCodes.get(code);
@@ -124,10 +127,12 @@ public class InvitationCodeService {
     }
 
     /**
-     * Redeems an invitation code, marking it as used and returning the assigned roles.
+     * Redeems an invitation code, marking it as used and returning the assigned
+     * roles.
      * 
      * @param code The invitation code to redeem.
-     * @return A list of roles assigned to the invitation code, or null if the code is invalid or already used.
+     * @return A list of roles assigned to the invitation code, or null if the code
+     *         is invalid or already used.
      */
     public List<Role> redeemInvitationCode(String code) {
         InvitationCode invitationCode = invitationCodes.get(code);
@@ -137,5 +142,14 @@ public class InvitationCodeService {
             return invitationCode.getRoles();
         }
         return null;
+    }
+
+    /**
+     * Cleans the existing database.
+     * 
+     */
+    public void cleanDB() {
+        File invitationCodesFile = new File(INVITATION_CODES_FILE);
+        invitationCodesFile.delete();
     }
 }

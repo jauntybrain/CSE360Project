@@ -428,4 +428,14 @@ public class UserService {
     public String getCurrentInvitationCode() {
         return currentInvitationCode;
     }
+
+    /**
+     * Cleans the existing database.
+     * 
+     */
+    public void cleanDB() {
+        File usersFile = new File(USERS_FILE);
+        usersFile.delete();
+        invitationCodeService.cleanDB();
+    }
 }
