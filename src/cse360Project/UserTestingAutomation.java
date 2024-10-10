@@ -18,22 +18,33 @@ import java.util.List;
 
 public class UserTestingAutomation {
 
-    /** The total number of passed tests */
+    /** 
+     * The total number of passed tests 
+     */
 	static int numPassed = 0;
 	
-	/** The total number of passed tests */
+    /** 
+     * The total number of passed tests 
+     */
     static int numFailed = 0;
     
     /**********
-	 * This is the main method of the testing automation class that runs all of the test cases
-	 * and displays why each individual test failed and shows the total amounts of passed and failed
-	 * tests
-	 */
+     * This is the main method of the testing automation class that runs all of the test cases
+     * and displays why each individual test failed and shows the total amounts of passed and failed
+     * tests
+     * 
+     * @param args The command line arguments.
+     */
     public static void main(String[] args) {
-        // Formatting
+        /**
+        * Formatting.
+        */
         System.out.println("____________________________________________________________________________");
         System.out.println("\nUser Class Automated Testing");
 
+        /**
+        * Data that will ne used for testing.
+        */
         String testUsername = "some username";
         byte[] testPassword = "super secret password".getBytes();
         String testFirstName = "firstname";
@@ -41,43 +52,78 @@ public class UserTestingAutomation {
         String testMiddleName = "middlename";
         String testEmail = "email@example.com";
 
+        /**
+        * Test user which will be used for test cases.
+        */
         User testUser = new User(testUsername, testPassword);
 
+        /**
+        * Testing username equality.
+        */
         assertEqual("Username Equality", testUser.getUsername(), testUsername);
         
+        /**
+        * Testing password equality.
+        */
         assertEqual("Password Equality", testUser.getPassword(), testPassword);
 
+        /**
+        * Testing topics equality.
+        */
         List<Topic> testTopics = new ArrayList<>();
         testTopics.add(Topic.INTERMEDIATE);
         assertEqual("Topics Equality", testUser.getTopics(), testTopics);
 
-        assertFalse("isFullyRegistered1", testUser.isFullyRegistered());
+        /**
+        * Testing if user is fully registered.
+        */
+        assertFalse("Is User Fully Registered False", testUser.isFullyRegistered());
 
+        /**
+        * Testing first name equality.
+        */
         testUser.setFirstName(testFirstName);
-
         assertEqual("First name Equality", testUser.getFirstName(),testFirstName);
 
+        /**
+        * Testing last name equality.
+        */
         testUser.setLastName(testLastName);
-
         assertEqual("Last name Equality", testUser.getLastName(), testLastName);
 
+        /**
+        * Testing email equality.
+        */
         testUser.setEmail(testEmail);
-
         assertEqual("Email Equality", testUser.getEmail(), testEmail);
 
+        /**
+        * Testing middle name equality.
+        */
         testUser.setMiddleName(testMiddleName);
-
         assertEqual("Middle Name Equality", testUser.getMiddleName(), testMiddleName);
 
-        assertTrue("isFullyRegistered2", testUser.isFullyRegistered());
+        /**
+        * Testing if user is fully registered.
+        */
+        assertTrue("Is User Fully Registered True", testUser.isFullyRegistered());
 
-        // Formatting
+        /**
+        * Formatting.
+        */
         System.out.println("\nNumber of tests passed: " + numPassed);
         System.out.println("Number of tests failed: " + numFailed);
         System.out.println();
         System.out.println("____________________________________________________________________________");
     }
     
+    /**
+     * Asserts that the test result equals to the expected value.
+     * 
+     * @param testName The test name to dislpay.
+     * @param testCase The value to be tested.
+     * @param expectedCase The expected value.
+     */
     private static <T> void assertEqual(String testName, T testCase, T expectedCase) {
         if (testCase.equals(expectedCase)) {
             numPassed++;
@@ -89,6 +135,12 @@ public class UserTestingAutomation {
         }
     }
     
+    /**
+     * Asserts that the test result value is true.
+     * 
+     * @param testName The test name to dislpay.
+     * @param testCase The value to be tested.
+     */
     private static void assertTrue(String testName, boolean testCase) {
         if (testCase) {
             numPassed++;
@@ -100,6 +152,12 @@ public class UserTestingAutomation {
         }
     }
 
+    /**
+     * Asserts that the test result value is false.
+     * 
+     * @param testName The test name to dislpay.
+     * @param testCase The value to be tested.
+     */
     private static void assertFalse(String testName, boolean testCase) {
         if (testCase == false) {
             numPassed++;
@@ -108,28 +166,6 @@ public class UserTestingAutomation {
             numFailed++;
             System.out.println("\nTest " + testName + " - failed");
             System.out.println("Test value " + testCase + " || Expected value false");
-        }
-    }
-
-    private static <T> void assertNull(String testName, T testCase) {
-        if (testCase == null) {
-            numPassed++;
-            System.out.println("\nTest " + testName + " - passed");
-        } else {
-            numFailed++;
-            System.out.println("\nTest " + testName + " - failed");
-            System.out.println("Test value " + testCase + " || Expected value null");
-        }
-    }
-
-    private static <T> void assertNotNull(String testName, T testCase) {
-        if (testCase != null) {
-            numPassed++;
-            System.out.println("\nTest " + testName + " - passed");
-        } else {
-            numFailed++;
-            System.out.println("\nTest " + testName + " - failed");
-            System.out.println("Test value " + testCase + " || Expected value not null");
         }
     }
 }

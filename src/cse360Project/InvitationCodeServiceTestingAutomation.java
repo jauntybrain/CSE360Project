@@ -18,47 +18,85 @@ import java.util.List;
 
 public class InvitationCodeServiceTestingAutomation {
 
-    /** The total number of passed tests */
+    /** 
+     * The total number of passed tests 
+     */
 	static int numPassed = 0;
 	
-	/** The total number of passed tests */
+    /** 
+     * The total number of failed tests 
+     */
     static int numFailed = 0;
     
     /**********
-	 * This is the main method of the testing automation class that runs all of the test cases
-	 * and displays why each individual test failed and shows the total amounts of passed and failed
-	 * tests
-	 */
+     * This is the main method of the testing automation class that runs all of the test cases
+     * and displays why each individual test failed and shows the total amounts of passed and failed
+     * tests
+     * 
+     * @param args The command line arguments.
+     */
     public static void main(String[] args) {
-        // Formatting
+        /**
+        * Formatting.
+        */
         System.out.println("____________________________________________________________________________");
         System.out.println("\nInvitationCodeService Class Automated Testing");
 
+        /**
+        * Data that will ne used for testing.
+        */
         String testCode = "secretcode";
         List<Role> testRoles = new ArrayList<>();
         testRoles.add(Role.STUDENT);
 
+        /**
+        * The InvitationCodeService instance that is going to be tested.
+        */
         InvitationCodeService testInstance = InvitationCodeService.getInstance();
-
+        
+        /**
+        * Testing roles equality.
+        */
         testInstance.addInvitationCode(testCode, testRoles);
-
         assertEqual("Roles Equality", testInstance.getRolesForInvitationCode(testCode), testRoles);
 
+        /**
+        * Testing if one time code was used.
+        */
         String oneTimeCode = testInstance.generateOneTimeCode(testRoles);
         assertTrue("One Time Code Not Used", testInstance.validateInvitationCode(oneTimeCode));
         
+        /**
+        * Testing redeeming one time code.
+        */
         assertEqual("Redeem One Time Code", testInstance.redeemInvitationCode(oneTimeCode), testRoles);
 
+        /**
+        * Testing if one time code was used.
+        */
         assertFalse("One Time Code Used", testInstance.validateInvitationCode(oneTimeCode));
 
+        /**
+        * Clean up.
+        */
         testInstance.cleanDB();
-        // Formatting
+        
+        /**
+        * Formatting.
+        */
         System.out.println("\nNumber of tests passed: " + numPassed);
         System.out.println("Number of tests failed: " + numFailed);
         System.out.println();
         System.out.println("____________________________________________________________________________");
     }
     
+    /**
+     * Asserts that the test result equals to the expected value.
+     * 
+     * @param testName The test name to dislpay.
+     * @param testCase The value to be tested.
+     * @param expectedCase The expected value.
+     */
     private static <T> void assertEqual(String testName, T testCase, T expectedCase) {
         if (testCase.equals(expectedCase)) {
             numPassed++;
@@ -70,6 +108,12 @@ public class InvitationCodeServiceTestingAutomation {
         }
     }
     
+    /**
+     * Asserts that the test result value is true.
+     * 
+     * @param testName The test name to dislpay.
+     * @param testCase The value to be tested.
+     */
     private static void assertTrue(String testName, boolean testCase) {
         if (testCase) {
             numPassed++;
@@ -81,6 +125,12 @@ public class InvitationCodeServiceTestingAutomation {
         }
     }
 
+    /**
+     * Asserts that the test result value is false.
+     * 
+     * @param testName The test name to dislpay.
+     * @param testCase The value to be tested.
+     */
     private static void assertFalse(String testName, boolean testCase) {
         if (testCase == false) {
             numPassed++;
