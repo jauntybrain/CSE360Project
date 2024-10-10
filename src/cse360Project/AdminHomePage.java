@@ -42,7 +42,7 @@ public class AdminHomePage extends Application {
     private InvitationCodeService invitationCodeService = InvitationCodeService.getInstance();
 
     // TableView to show all user accounts
-    TableView<User> userTable = new TableView<>();
+    private TableView<User> userTable = new TableView<>();
 
     /**
      * Starts the AdminHomePage and sets up the dashboardinterface.
@@ -329,14 +329,5 @@ public class AdminHomePage extends Application {
                 }
             }
         });
-    }
-
-    /**
-     * Launches the application.
-     * 
-     * @param args The command line arguments.
-     */
-    public static void main(String[] args) {
-        launch(args);
     }
 }

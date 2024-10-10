@@ -106,13 +106,4 @@ public class HomePage extends Application {
         });
         vbox.getChildren().add(logoutButton);
     }
-
-    /**
-     * Launches the application.
-     * 
-     * @param args The command line arguments.
-     */
-    public static void main(String[] args) {
-        launch(args);
-    }
 }

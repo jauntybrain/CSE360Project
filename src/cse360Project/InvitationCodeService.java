@@ -24,7 +24,7 @@ import java.util.UUID;
  * 
  */
 public class InvitationCodeService {
-    public static InvitationCodeService instance;
+    private static InvitationCodeService instance;
 
     private static final String INVITATION_CODES_FILE = "invitationCodes.txt";
     private Map<String, InvitationCode> invitationCodes = new HashMap<>();
