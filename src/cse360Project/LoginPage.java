@@ -13,7 +13,7 @@ import javafx.stage.Stage;
 /*******
  * <p>
  * LoginPage Class
- * </p> 
+ * </p>
  * 
  * <p>
  * Description: Handles user login, registration, and account setup.
@@ -134,7 +134,7 @@ public class LoginPage extends Application {
             if (invitationCodeService.validateInvitationCode(code)) {
                 List<Role> roles = invitationCodeService.getRolesForInvitationCode(code);
                 if (roles != null) {
-                	userService.setCurrentValidationCode(code);
+                    userService.setCurrentValidationCode(code);
                     showRegistrationPage(primaryStage);
                 } else {
                     infoLabel.setText("Invitation code has already been used.");
@@ -250,7 +250,7 @@ public class LoginPage extends Application {
         TextField lastNameField = new TextField();
         Label preferredNameLabel = new Label("Preferred Name (optional):");
         TextField preferredNameField = new TextField();
-        Button finishSetupButton = new Button("Finish AccountSetup");
+        Button finishSetupButton = new Button("Finish Account Setup");
         Label infoLabel = new Label();
 
         // Add components to the grid
@@ -278,6 +278,19 @@ public class LoginPage extends Application {
             // Check if the required fields are empty
             if (email.isEmpty() || firstName.isEmpty() || lastName.isEmpty()) {
                 infoLabel.setText("Email, First Name, and Last Name are required.");
+                return;
+            }
+
+            // Validate fields
+            if (!userService.isValidEmail(email)) {
+                infoLabel.setText("Invalid email format.");
+                return;
+            }
+
+            if (!userService.isValidName(firstName) || !userService.isValidName(lastName) ||
+                    (!middleName.isEmpty() && !userService.isValidName(middleName)) ||
+                    (!preferredName.isEmpty() && !userService.isValidName(preferredName))) {
+                infoLabel.setText("Names can only contain Latin letters and spaces, max length 60.");
                 return;
             }
 

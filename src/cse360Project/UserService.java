@@ -113,6 +113,54 @@ public class UserService {
     }
 
     /**
+     * Validates username.
+     * Only Latin letters and numbers allowed, max length 36
+     * 
+     * @param username The username to validate.
+     * @return true if the username is valid, false otherwise.
+     */
+    public boolean isValidUsername(String username) {
+        return username.matches("^[A-Za-z0-9]{1,36}$");
+    }
+
+    /**
+     * Validates password.
+     * Must be 8-36 characters long, include an uppercase letter, a number, and a
+     * special character.
+     * 
+     * @param password The password to validate.
+     * @return true if the password is valid, false otherwise.
+     */
+    public boolean isValidPassword(String password) {
+        return password.length() >= 8 && password.length() <= 36 &&
+                password.matches(".*[A-Z].*") &&
+                password.matches(".*[!@#$%^&*()].*") &&
+                password.matches(".*\\d.*");
+    }
+
+    /**
+     * Validates email.
+     * Basic email format validation
+     * 
+     * @param email The email to validate.
+     * @return true if the email is valid, false otherwise.
+     */
+    public boolean isValidEmail(String email) {
+        return email.matches("^[\\w-\\.]+@[\\w-]+\\.[a-z]{2,4}$");
+    }
+
+    /**
+     * Validates name.
+     * Only Latin letters and spaces allowed, max length 60
+     * 
+     * @param name The name to validate.
+     * @return true if the name is valid, false otherwise.
+     */
+    public boolean isValidName(String name) {
+        return name.matches("^[A-Za-z\\s]{1,60}$");
+    }
+
+    /**
      * Registers a new user.
      * 
      * @param username The username of the new user.
@@ -121,8 +169,16 @@ public class UserService {
      * @throws IllegalArgumentException if the username already exists.
      */
     public User register(String username, String password) throws IllegalArgumentException {
+        if (!isValidUsername(username)) {
+            throw new IllegalArgumentException(
+                    "Invalid username. Only Latin letters and numbers allowed, max length 36.");
+        }
+        if (!isValidPassword(password)) {
+            throw new IllegalArgumentException(
+                    "Invalid password. Must be 8-36 characters long, include an uppercase letter, a number, and a special character.");
+        }
         if (users.containsKey(username)) {
-            throw new IllegalArgumentException("Username already exists.");
+            throw new IllegalArgumentException("Username is already taken.");
         }
         try {
             byte[] hashedPassword = hashPassword(password);
@@ -134,7 +190,7 @@ public class UserService {
                 if (roles != null) {
                     registeredUser.getRoles().addAll(roles);
                 } else {
-                    System.out.println("No roles found for the provided invitation code.");
+                    System.out.println("No roles found for this invitation code.");
                 }
             }
             users.put(username, registeredUser);

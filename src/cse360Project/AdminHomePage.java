@@ -88,7 +88,7 @@ public class AdminHomePage extends Application {
         });
         vbox.getChildren().add(logoutButton);
 
-        Scene scene = new Scene(vbox, 600, 400);
+        Scene scene = new Scene(vbox, 800, 400);
         primaryStage.setScene(scene);
         primaryStage.show();
     }
