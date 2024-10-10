@@ -1,9 +1,9 @@
 package cse360Project;
 
 /*******
- * <p> User Testing Automation Class </p>
+ * <p> UserService Testing Automation Class </p>
  * 
- * <p> Description: A class to test the actual User class. </p>
+ * <p> Description: A class to test the actual UserService class. </p>
  * 
  * <p> Copyright: CSE 360 Team Th02 © 2024 </p>
  * 
