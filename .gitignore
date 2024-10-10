@@ -1,2 +1,8 @@
 # Ignore bin folder
 bin/
+
+# Ignore .DS_Store
+.DS_Store
+
+# Ignore .txt files
+*.txt
