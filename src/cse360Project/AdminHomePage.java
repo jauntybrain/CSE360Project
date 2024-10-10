@@ -66,7 +66,7 @@ public class AdminHomePage extends Application {
 
         // Setup user table
         userTable.setEditable(true);
-        setupUserTableColumns();
+        setupUserTableColumns(primaryStage);
 
         // Add observable (stateful) users to the table
         ObservableList<User> observableUsers = FXCollections.observableArrayList(userService.getAllUsers());
@@ -96,7 +96,7 @@ public class AdminHomePage extends Application {
     /**
      * Sets up the user table.
      */
-    private void setupUserTableColumns() {
+    private void setupUserTableColumns(Stage primaryStage) {
         // Define columns
         TableColumn<User, String> usernameCol = new TableColumn<>("Username");
         usernameCol.setCellValueFactory(new PropertyValueFactory<>("username"));
@@ -137,7 +137,7 @@ public class AdminHomePage extends Application {
 
             {
                 resetButton.setOnAction(e -> resetUser(getTableView().getItems().get(getIndex())));
-                deleteButton.setOnAction(e -> deleteUser(getTableView().getItems().get(getIndex())));
+                deleteButton.setOnAction(e -> deleteUser(getTableView().getItems().get(getIndex()), primaryStage));
             }
 
             @Override
@@ -294,7 +294,7 @@ public class AdminHomePage extends Application {
      * 
      * @param user The user whose account is being deleted.
      */
-    private void deleteUser(User user) {
+    private void deleteUser(User user, Stage primaryStage) {
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
         confirmAlert.setTitle("Confirm Deletion");
 
@@ -324,8 +324,7 @@ public class AdminHomePage extends Application {
                 if (isSelfDeletion) {
                     userService.setCurrentUser(null);
                     new LoginPage().start(new Stage());
-                    Stage currentStage = (Stage) confirmAlert.getDialogPane().getScene().getWindow();
-                    currentStage.close();
+                    primaryStage.close();
                 }
             }
         });
