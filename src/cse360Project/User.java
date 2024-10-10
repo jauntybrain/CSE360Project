@@ -14,9 +14,9 @@ import java.util.List;
  * 
  * <p> Description: A class representing a user with various attributes and roles. </p>
  * 
- * <p> Copyright: CSE 360 Team © 2024 </p>
+ * <p> Copyright: CSE 360 Team Th02 © 2024 </p>
  * 
- * @author CSE 360 Team
+ * @author CSE 360 Team Th02
  * 
  * @version 1.00 2024-10-09 Phase one
  * 

@@ -29,7 +29,7 @@ import java.util.List;
  * </p>
  * 
  * <p>
- * Copyright: CSE 360 Team © 2024
+ * Copyright: CSE 360 Team Th02 © 2024
  * </p>
  * 
  * @version 1.00 2024-10-09 Phase one
