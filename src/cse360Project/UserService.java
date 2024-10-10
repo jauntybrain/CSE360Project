@@ -193,6 +193,9 @@ public class UserService {
                     System.out.println("No roles found for this invitation code.");
                 }
             }
+            if (users.containsKey(username)) {
+                throw new IllegalArgumentException("Username is already taken.");
+            }
             users.put(username, registeredUser);
             setCurrentUser(registeredUser);
             saveUsersToFile();
@@ -229,16 +232,6 @@ public class UserService {
      */
     public boolean isFirstUser() {
         return users.isEmpty();
-    }
-
-    /**
-     * Adds a user to the user service and saves it to the local file.
-     * 
-     * @param user The user to add.
-     */
-    public void addUser(User user) {
-        users.put(user.getUsername(), user);
-        saveUsersToFile();
     }
 
     /**
