@@ -118,8 +118,8 @@ public class HelpArticleServiceTestingAutomation {
 			/**
 			* Testing back up and restore.
 			*/
-			testService.backupArticles("~/articlesBackup.bak", Collections.emptySet());
-			testService.restoreArticles("~/articlesBackup.bak", false);
+			testService.backupArticles("articlesBackup.bak", Collections.emptySet());
+			testService.restoreArticles("articlesBackup.bak", false);
 			assertEqual("Back up and restore", testService.getAllArticles().size(), 1);
 
 			/**
