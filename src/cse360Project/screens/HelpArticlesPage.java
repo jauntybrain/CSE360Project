@@ -46,15 +46,16 @@ import java.util.Set;
 public class HelpArticlesPage extends Application {
 
     private TableView<HelpArticleRow> tableView;
-    private HelpArticleService dbHelper;
-    private Button backupButton;
+    private HelpArticleService helpArticleService;
     private UserService userService = UserService.getInstance();
-    List<HelpArticle> articles;
 
-    private VBox rootNode;
-    private Button groupFilterButton;
+    private List<HelpArticle> articles;
     private Set<String> selectedGroups = new HashSet<>();
     private List<String> allGroups = new ArrayList<>();
+
+    private Button backupButton;
+    private VBox rootNode;
+    private Button groupFilterButton;
 
     private boolean isUpdatingGroups = false;
 
@@ -75,8 +76,8 @@ public class HelpArticlesPage extends Application {
      */
     @Override
     public void start(Stage primaryStage) throws Exception {
-        dbHelper = new HelpArticleService();
-        dbHelper.connectToDatabase();
+        helpArticleService = new HelpArticleService();
+        helpArticleService.connectToDatabase();
 
         tableView = new TableView<>();
         setupTableView();
@@ -187,9 +188,9 @@ public class HelpArticlesPage extends Application {
     private void loadArticles() {
         try {
             if (selectedGroups.isEmpty()) {
-                articles = dbHelper.getAllArticles();
+                articles = helpArticleService.getAllArticles();
             } else {
-                articles = dbHelper.getArticlesByGroups(new ArrayList<>(selectedGroups));
+                articles = helpArticleService.getArticlesByGroups(new ArrayList<>(selectedGroups));
             }
 
             ObservableList<HelpArticleRow> data = FXCollections.observableArrayList();
@@ -364,7 +365,7 @@ public class HelpArticlesPage extends Application {
                         level);
 
                 try {
-                    dbHelper.modifyArticle(article, alreadyExists);
+                    helpArticleService.modifyArticle(article, alreadyExists);
                     loadArticles();
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -382,7 +383,7 @@ public class HelpArticlesPage extends Application {
      */
     private void deleteArticle(String id) {
         try {
-            dbHelper.deleteArticle(id);
+            helpArticleService.deleteArticle(id);
             loadArticles();
         } catch (Exception e) {
             e.printStackTrace();
@@ -505,7 +506,7 @@ public class HelpArticlesPage extends Application {
             if (file != null) {
                 try {
                     Set<String> selectedGroups = result.get();
-                    dbHelper.backupArticles(file.getAbsolutePath(), selectedGroups);
+                    helpArticleService.backupArticles(file.getAbsolutePath(), selectedGroups);
 
                     Alert alert = new Alert(Alert.AlertType.INFORMATION);
                     alert.setTitle("Backup Successful");
@@ -550,7 +551,7 @@ public class HelpArticlesPage extends Application {
                 try {
                     boolean merge = response == mergeButton;
                     if (response != cancelButton) {
-                        dbHelper.restoreArticles(file.getAbsolutePath(), merge);
+                        helpArticleService.restoreArticles(file.getAbsolutePath(), merge);
                         loadArticles();
                         Alert alert = new Alert(Alert.AlertType.INFORMATION);
                         alert.setTitle("Restore Successful");
@@ -662,7 +663,7 @@ public class HelpArticlesPage extends Application {
         try {
             isUpdatingGroups = true;
 
-            allGroups = dbHelper.getAllGroups();
+            allGroups = helpArticleService.getAllGroups();
 
             if (!allGroups.isEmpty()) {
                 groupFilterButton.setDisable(false);
