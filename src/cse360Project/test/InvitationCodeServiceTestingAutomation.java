@@ -1,12 +1,15 @@
-package cse360Project;
+package cse360Project.test;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import cse360Project.models.Role;
+import cse360Project.services.InvitationCodeService;
+
 /*******
- * <p> InvitationCode Testing Automation Class </p>
+ * <p> InvitationCodeService Testing Automation Class </p>
  * 
- * <p> Description: A class to test the actual InvitationCode class. </p>
+ * <p> Description: A class to test the actual InvitationCodeService class. </p>
  * 
  * <p> Copyright: CSE 360 Team Th02 © 2024 </p>
  * 
@@ -16,7 +19,7 @@ import java.util.List;
  * 
  */
 
-public class InvitationCodeTestingAutomation {
+public class InvitationCodeServiceTestingAutomation {
 
     /** 
      * The total number of passed tests 
@@ -40,38 +43,47 @@ public class InvitationCodeTestingAutomation {
         * Formatting.
         */
         System.out.println("____________________________________________________________________________");
-        System.out.println("\nInvitationCode Class Automated Testing");
+        System.out.println("\nInvitationCodeService Class Automated Testing");
 
         /**
         * Data that will ne used for testing.
         */
-        String code = "secretcode";
+        String testCode = "secretcode";
         List<Role> testRoles = new ArrayList<>();
         testRoles.add(Role.STUDENT);
 
         /**
-        * Test code that will be used for test cases.
+        * The InvitationCodeService instance that is going to be tested.
         */
-        InvitationCode testCode = new InvitationCode(code, testRoles);
-
-        /**
-        * Testing code equality.
-        */
-        assertEqual("Code Equality", testCode.getCode(), code);
-
-        /**
-        * Testing code usage equality.
-        */
-        testCode.setUsed(true);
-        assertTrue("Used Code", testCode.isUsed());
-
+        InvitationCodeService testInstance = InvitationCodeService.getInstance();
+        
         /**
         * Testing roles equality.
         */
-        List<Role> testRoles2 = new ArrayList<>();
-        testRoles2.add(Role.STUDENT);
-        assertEqual("Roles Equality", testCode.getRoles(), testRoles2);
+        testInstance.addInvitationCode(testCode, testRoles);
+        assertEqual("Roles Equality", testInstance.getRolesForInvitationCode(testCode), testRoles);
 
+        /**
+        * Testing if one time code was used.
+        */
+        String oneTimeCode = testInstance.generateOneTimeCode(testRoles);
+        assertTrue("One Time Code Not Used", testInstance.validateInvitationCode(oneTimeCode));
+        
+        /**
+        * Testing redeeming one time code.
+        */
+        assertEqual("Redeem One Time Code", testInstance.redeemInvitationCode(oneTimeCode), testRoles);
+
+        /**
+        * Testing if one time code was used.
+        */
+        assertFalse("One Time Code Used", testInstance.validateInvitationCode(oneTimeCode));
+
+        /**
+        * Clean up.
+        */
+        testInstance.cleanDB();
+        
         /**
         * Formatting.
         */
@@ -113,6 +125,23 @@ public class InvitationCodeTestingAutomation {
             numFailed++;
             System.out.println("\nTest " + testName + " - failed");
             System.out.println("Test value " + testCase + " || Expected value true");
+        }
+    }
+
+    /**
+     * Asserts that the test result value is false.
+     * 
+     * @param testName The test name to dislpay.
+     * @param testCase The value to be tested.
+     */
+    private static void assertFalse(String testName, boolean testCase) {
+        if (testCase == false) {
+            numPassed++;
+            System.out.println("\nTest " + testName + " - passed");
+        } else {
+            numFailed++;
+            System.out.println("\nTest " + testName + " - failed");
+            System.out.println("Test value " + testCase + " || Expected value false");
         }
     }
 }

@@ -1,22 +1,30 @@
-package cse360Project;
+package cse360Project.screens;
 
 import javafx.application.Application;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import cse360Project.models.Role;
+import cse360Project.models.User;
+import cse360Project.services.InvitationCodeService;
+import cse360Project.services.UserService;
 
 /*******
  * <p>
@@ -32,7 +40,8 @@ import java.util.List;
  * Copyright: CSE 360 Team Th02 © 2024
  * </p>
  * 
- * @version 1.00 2024-10-09 Phase one
+ * @version 1.01 2024-10-30 Phase two
+ *          1.00 2024-10-09 Phase one
  * 
  */
 public class AdminHomePage extends Application {
@@ -53,16 +62,17 @@ public class AdminHomePage extends Application {
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Admin Home Page");
 
-        // Vertical box layout for the admin dashboard
-        VBox vbox = new VBox(10);
-        vbox.setPadding(new Insets(20));
+        // Create a TabPane
+        TabPane tabPane = new TabPane();
+
+        // Create the Admin Home Page tab
+        Tab adminTab = new Tab("Manage Users");
+        adminTab.setClosable(false);
+        VBox adminVBox = new VBox(10);
+        adminVBox.setPadding(new Insets(10));
 
         // Get the current user
         User currentUser = userService.getCurrentUser();
-
-        // Show welcome message
-        Label welcomeLabel = new Label("Welcome, " + currentUser.getFirstName() + "! You are an admin.");
-        vbox.getChildren().add(welcomeLabel);
 
         // Setup user table
         userTable.setEditable(true);
@@ -72,12 +82,22 @@ public class AdminHomePage extends Application {
         ObservableList<User> observableUsers = FXCollections.observableArrayList(userService.getAllUsers());
         userTable.setItems(observableUsers);
 
-        vbox.getChildren().add(userTable);
+        adminVBox.getChildren().add(userTable);
+
+        // Create an HBox for the invite and logout buttons
+        HBox buttonBox = new HBox(10);
+        buttonBox.setSpacing(10);
+        buttonBox.setPrefWidth(Double.MAX_VALUE);
 
         // Add invite button
         Button inviteButton = new Button("Invite User");
         inviteButton.setOnAction(e -> inviteUser());
-        vbox.getChildren().add(inviteButton);
+        buttonBox.getChildren().add(inviteButton);
+
+        // Add a spacer
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        buttonBox.getChildren().add(spacer);
 
         // Add logout button
         Button logoutButton = new Button("Logout");
@@ -86,9 +106,32 @@ public class AdminHomePage extends Application {
             new LoginPage().start(new Stage());
             primaryStage.close();
         });
-        vbox.getChildren().add(logoutButton);
+        buttonBox.getChildren().add(logoutButton);
 
-        Scene scene = new Scene(vbox, 800, 400);
+        adminVBox.getChildren().add(buttonBox);
+
+        adminTab.setContent(adminVBox);
+
+        // Create the Help Articles Page tab
+        Tab helpTab = new Tab("Help Articles");
+        helpTab.setClosable(false);
+
+        // Load content from HelpArticlesPage
+        HelpArticlesPage helpArticlesPage = new HelpArticlesPage();
+        try {
+			helpArticlesPage.start(primaryStage);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+        // Add the HelpArticlesPage's root node to the tab
+        helpTab.setContent(helpArticlesPage.getRootNode());
+
+        // Add tabs to the TabPane
+        tabPane.getTabs().addAll(adminTab, helpTab);
+
+        // Set the scene with the TabPane
+        Scene scene = new Scene(tabPane, 900, 450);
         primaryStage.setScene(scene);
         primaryStage.show();
     }

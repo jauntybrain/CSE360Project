@@ -1,5 +1,8 @@
-package cse360Project;
+package cse360Project.screens;
 
+import cse360Project.models.Role;
+import cse360Project.models.User;
+import cse360Project.services.UserService;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -22,7 +25,8 @@ import javafx.stage.Stage;
  * Copyright: CSE 360 Team Th02 © 2024
  * </p>
  * 
- * @version 1.00 2024-10-09 Phase one
+ * @version 1.01 2024-10-30 Phase two
+ *          1.00 2024-10-09 Phase one
  * 
  */
 public class HomePage extends Application {
@@ -59,8 +63,11 @@ public class HomePage extends Application {
             selectRoleButton.setOnAction(e -> {
                 Role selectedRole = roleComboBox.getValue();
                 if (selectedRole == Role.ADMIN) {
-                    new AdminHomePage().start(new Stage());
                     primaryStage.close();
+                    new AdminHomePage().start(new Stage());
+                } else if (selectedRole == Role.INSTRUCTOR) {
+                    primaryStage.close();
+                    new InstructorHomePage().start(new Stage());
                 } else {
                     vbox.getChildren().clear();
                     Label selectedRoleLabel = new Label("Welcome! Your current role: " + selectedRole);
@@ -76,6 +83,10 @@ public class HomePage extends Application {
             if (singleRole == Role.ADMIN) {
                 primaryStage.close();
                 new AdminHomePage().start(new Stage());
+                return;
+            } else if (singleRole == Role.INSTRUCTOR) {
+                primaryStage.close();
+             	new InstructorHomePage().start(new Stage());
                 return;
             } else {
                 Label roleLabel = new Label("Welcome! Your current role: " + singleRole);

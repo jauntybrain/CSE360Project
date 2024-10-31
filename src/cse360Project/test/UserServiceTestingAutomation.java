@@ -1,4 +1,8 @@
-package cse360Project;
+package cse360Project.test;
+
+import cse360Project.models.Role;
+import cse360Project.models.User;
+import cse360Project.services.UserService;
 
 /*******
  * <p> UserService Testing Automation Class </p>

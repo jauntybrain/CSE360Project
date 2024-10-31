@@ -1,4 +1,4 @@
-package cse360Project;
+package cse360Project.models;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -18,23 +18,10 @@ import java.util.List;
  * 
  * @author CSE 360 Team Th02
  * 
- * @version 1.00 2024-10-09 Phase one
+ * @version 1.01 2024-10-09 Phase two
+ *          1.00 2024-10-09 Phase one
  * 
  */
-
-enum Topic {
-    BEGINNER,
-    INTERMEDIATE,
-    ADVANCED,
-    EXPERT
-}
-
-enum Role {
-    ADMIN,
-    STUDENT,
-    INSTRUCTOR
-}
-
 public class User implements Serializable {
     private static final long serialVersionUID = 1L;
 	private String username;
@@ -102,86 +89,191 @@ public class User implements Serializable {
         return username;
     }
 
+    /**
+     * Sets the username of the user.
+     * 
+     * @param username the username to set.
+     */
     public void setUsername(String username) {
         this.username = username;
     }
 
+    /**
+     * Gets the hashed password of the user.
+     * 
+     * @return the hashed password.
+     */
     public byte[] getPassword() {
         return password;
     }
 
+    /**
+     * Sets the hashed password of the user.
+     * 
+     * @param hashedPassword the hashed password to set.
+     */
     public void setPassword(byte[] hashedPassword) {
         this.password = hashedPassword;
     }
 
+    /**
+     * Gets the email of the user.
+     * 
+     * @return the email.
+     */
     public String getEmail() {
         return email;
     }
-    
+
+    /**
+     * Sets the email of the user.
+     * 
+     * @param email the email to set.
+     */
     public void setEmail(String email) {
         this.email = email;
     }
 
+    /**
+     * Gets the first name of the user.
+     * 
+     * @return the first name.
+     */
     public String getFirstName() {
         return firstName;
     }
 
+    /**
+     * Sets the first name of the user.
+     * 
+     * @param firstName the first name to set.
+     */
     public void setFirstName(String firstName) {
         this.firstName = firstName;
     }
 
+    /**
+     * Gets the middle name of the user.
+     * 
+     * @return the middle name.
+     */
     public String getMiddleName() {
         return middleName;
     }
 
+    /**
+     * Sets the middle name of the user.
+     * 
+     * @param middleName the middle name to set.
+     */
     public void setMiddleName(String middleName) {
         this.middleName = middleName;
     }
 
+    /**
+     * Gets the last name of the user.
+     * 
+     * @return the last name.
+     */
     public String getLastName() {
         return lastName;
     }
 
+    /**
+     * Sets the last name of the user.
+     * 
+     * @param lastName the last name to set.
+     */
     public void setLastName(String lastName) {
         this.lastName = lastName;
     }
 
+    /**
+     * Gets the preferred name of the user.
+     * 
+     * @return the preferred name.
+     */
     public String getPreferredName() {
     	return preferredName;
     }
 
+    /**
+     * Sets the preferred name of the user.
+     * 
+     * @param preferredName the preferred name to set.
+     */
     public void setPreferredName(String preferredName) {
         this.preferredName = preferredName;
     }
 
+    /**
+     * Gets the list of topics of the user.
+     * 
+     * @return the list of topics.
+     */
     public List<Topic> getTopics() {
         return topics;
     }
 
+    /**
+     * Sets the list of topics of the user.
+     * 
+     * @param topics the list of topics to set.
+     */
     public void setTopics(List<Topic> topics) {
         this.topics = topics;
     }
 
+    /**
+     * Gets the list of roles of the user.
+     * 
+     * @return the list of roles.
+     */
     public List<Role> getRoles() {
         return roles;
     }
 
+    /**
+     * Sets the list of roles of the user.
+     * 
+     * @param roles the list of roles to set.
+     */
     public void setRoles(List<Role> roles) {
         this.roles = roles;
     }
-    
+
+    /**
+     * Gets the has one time password flag of the user.
+     * 
+     * @return the has one time password flag.
+     */
     public boolean getHasOneTimePassword() {
         return hasOneTimePassword;
     }
 
+    /**
+     * Sets the has one time password flag of the user.
+     * 
+     * @param oneTimePassword the has one time password flag to set.
+     */
     public void setHasOneTimePassword(boolean oneTimePassword) {
     	hasOneTimePassword = oneTimePassword;
     }
 
+    /**
+     * Gets the one time password expires of the user.
+     * 
+     * @return the one time password expires.
+     */
     public LocalDateTime getOneTimePasswordExpires() {
         return oneTimePasswordExpires;
     }
 
+    /**
+     * Sets the one time password expires of the user.
+     * 
+     * @param oneTimePasswordExpires the one time password expires to set.
+     */
     public void setOneTimePasswordExpires(LocalDateTime oneTimePasswordExpires) {
         this.oneTimePasswordExpires = oneTimePasswordExpires;
     }

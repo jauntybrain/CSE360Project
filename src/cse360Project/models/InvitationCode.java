@@ -1,4 +1,4 @@
-package cse360Project;
+package cse360Project.models;
 
 import java.io.Serializable;
 import java.util.List;

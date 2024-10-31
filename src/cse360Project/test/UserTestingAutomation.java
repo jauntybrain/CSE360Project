@@ -1,7 +1,10 @@
-package cse360Project;
+package cse360Project.test;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import cse360Project.models.Topic;
+import cse360Project.models.User;
 
 /*******
  * <p> User Testing Automation Class </p>

@@ -1,7 +1,11 @@
-package cse360Project;
+package cse360Project.screens;
 
 import java.util.List;
 
+import cse360Project.models.Role;
+import cse360Project.models.User;
+import cse360Project.services.InvitationCodeService;
+import cse360Project.services.UserService;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Node;

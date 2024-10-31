@@ -1,10 +1,14 @@
-package cse360Project;
+package cse360Project.services;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import cse360Project.models.Role;
+import cse360Project.models.User;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
