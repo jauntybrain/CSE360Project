@@ -89,14 +89,14 @@ public class HelpArticleServiceTestingAutomation {
 			/**
 			 * Testing that initially there is 0 groups.
 			 */
-			assertEqual("Empty Groups Table", testService.getAllGroups().size(), 0);
+			assertEqual("Empty Groups Table", testService.getAllArticles().size(), 0);
 
 			/**
 			 * Testing adding 2 articles to the db.
 			 */
 			testService.modifyArticle(testHelpArticle1, false);
 			testService.modifyArticle(testHelpArticle2, false);
-			assertEqual("Add 2 articles to the db", testService.getAllGroups().size(), 2);
+			assertEqual("Add 2 articles to the db", testService.getAllArticles().size(), 2);
 
 			/**
 			* Testing deleting an article.
@@ -118,8 +118,8 @@ public class HelpArticleServiceTestingAutomation {
 			/**
 			* Testing back up and restore.
 			*/
-			testService.backupArticles("~/backup", Collections.emptySet());
-			testService.restoreArticles("~/backup", false);
+			testService.backupArticles("~/articlesBackup.bak", Collections.emptySet());
+			testService.restoreArticles("~/articlesBackup.bak", false);
 			assertEqual("Back up and restore", testService.getAllArticles().size(), 1);
 
 			/**
