@@ -1,6 +1,7 @@
 package cse360Project.test;
 
 import java.util.Collections;
+import java.util.Arrays;
 import java.util.UUID;
 
 import cse360Project.models.HelpArticle;
@@ -99,8 +100,8 @@ public class HelpArticleServiceTestingAutomation {
 			assertEqual("Add 2 articles to the db", testService.getAllArticles().size(), 2);
 
 			/**
-			* Testing deleting an article.
-			*/
+			 * Testing deleting an article.
+			 */
 			testService.deleteArticle(testUuid2);
 			assertEqual("Deleting an article", testService.getAllArticles().size(), 1);
 
@@ -110,14 +111,14 @@ public class HelpArticleServiceTestingAutomation {
 			char[] testTitle2 = "Advanced Java Concepts".toCharArray();
 			testHelpArticle1.setTitle(testTitle2);
 			char[][] testAuthors2 = { "author3".toCharArray(), "author4".toCharArray(), "author5".toCharArray() };
-        	testHelpArticle1.setAuthors(testAuthors2);
+			testHelpArticle1.setAuthors(testAuthors2);
 			testService.modifyArticle(testHelpArticle1, true);
 			assertEqual("Editing article title", testService.getAllArticles().get(0).getTitle(), testTitle2);
 			assertEqual("Editing article authors", testService.getAllArticles().get(0).getAuthors(), testAuthors2);
 
 			/**
-			* Testing back up and restore.
-			*/
+			 * Testing back up and restore.
+			 */
 			testService.backupArticles("articlesBackup.bak", Collections.emptySet());
 			testService.restoreArticles("articlesBackup.bak", false);
 			assertEqual("Back up and restore", testService.getAllArticles().size(), 1);
@@ -148,7 +149,16 @@ public class HelpArticleServiceTestingAutomation {
 	 * @param expectedCase The expected value.
 	 */
 	private static <T> void assertEqual(String testName, T testCase, T expectedCase) {
-		if (testCase.equals(expectedCase)) {
+		boolean isEqual;
+		if (testCase instanceof char[] && expectedCase instanceof char[]) {
+			isEqual = Arrays.equals((char[]) testCase, (char[]) expectedCase);
+		} else if (testCase instanceof char[][] && expectedCase instanceof char[][]) {
+			isEqual = Arrays.deepEquals((char[][]) testCase, (char[][]) expectedCase);
+		} else {
+			isEqual = testCase.equals(expectedCase);
+		}
+
+		if (isEqual) {
 			numPassed++;
 			System.out.println("\nTest " + testName + " - passed");
 		} else {
