@@ -37,14 +37,14 @@ import cse360Project.models.Topic;
  */
 public class HelpArticleService {
 
-    static final String JDBC_DRIVER = "org.h2.Driver";
-    static final String DB_URL = "jdbc:h2:~/articleDatabase";
-    static final String USER = "sa";
-    static final String PASS = "";
+    private static final String JDBC_DRIVER = "org.h2.Driver";
+    private static final String DB_URL = "jdbc:h2:~/articleDatabase";
+    private static final String USER = "sa";
+    private static final String PASS = "";
 
     private Connection connection = null;
     private Statement statement = null;
-    private EncryptionService EncryptionService;
+    private EncryptionService encryptionService;
 
     /**
      * Creates HelpArticleService and initializes EncryptionService.
@@ -52,7 +52,7 @@ public class HelpArticleService {
      * @throws Exception if an error occurs during initialization.
      */
     public HelpArticleService() throws Exception {
-        EncryptionService = new EncryptionService();
+        encryptionService = new EncryptionService();
     }
 
     /**
@@ -96,7 +96,7 @@ public class HelpArticleService {
      * Encrypts and modifies an article in the database.
      * 
      * @param article the article to modify.
-     * @param update create or update.
+     * @param update  create or update.
      * @throws Exception if an encryption or database error occurs.
      */
     public void modifyArticle(HelpArticle article, boolean update) throws Exception {
@@ -184,8 +184,8 @@ public class HelpArticleService {
      * /**
      * Backs up articles to a user-specified file.
      * 
-     * @param filename the name of the file.
-     * @param articles list of articles to backup.
+     * @param filename       the name of the file.
+     * @param selectedGroups the groups to backup.
      * @throws Exception if I/O or encryption error occurs.
      */
     public void backupArticles(String filename, Set<String> selectedGroups) throws Exception {
@@ -222,7 +222,7 @@ public class HelpArticleService {
                 oos.writeObject(encryptedReferences);
                 oos.writeObject(encryptedGroups);
                 oos.writeObject(encryptedLevel);
-                
+
                 oos.writeObject(Base64.getEncoder().encodeToString(iv));
                 oos.writeObject(article.getUuid());
             }
@@ -254,7 +254,7 @@ public class HelpArticleService {
                     String encryptedReferences = (String) ois.readObject();
                     String encryptedGroups = (String) ois.readObject();
                     String encryptedLevel = (String) ois.readObject();
-                    
+
                     String encodedIV = (String) ois.readObject();
                     String articleUuid = (String) ois.readObject();
 
@@ -345,7 +345,7 @@ public class HelpArticleService {
      */
     private String encryptField(char[] data, byte[] iv) throws Exception {
         return Base64.getEncoder().encodeToString(
-                EncryptionService.encrypt(EncryptionUtils.toByteArray(data), iv));
+                encryptionService.encrypt(EncryptionUtils.toByteArray(data), iv));
     }
 
     /**
@@ -358,7 +358,7 @@ public class HelpArticleService {
      */
     private String encryptField(String data, byte[] iv) throws Exception {
         return Base64.getEncoder().encodeToString(
-                EncryptionService.encrypt(data.getBytes(), iv));
+                encryptionService.encrypt(data.getBytes(), iv));
     }
 
     /**
@@ -399,7 +399,7 @@ public class HelpArticleService {
      */
     private char[] decryptField(String encrypted, byte[] iv) throws Exception {
         return EncryptionUtils.toCharArray(
-                EncryptionService.decrypt(Base64.getDecoder().decode(encrypted), iv));
+                encryptionService.decrypt(Base64.getDecoder().decode(encrypted), iv));
     }
 
     /**
@@ -412,7 +412,7 @@ public class HelpArticleService {
      */
     private String decryptFieldToString(String encrypted, byte[] iv) throws Exception {
         return new String(
-                EncryptionService.decrypt(Base64.getDecoder().decode(encrypted), iv));
+                encryptionService.decrypt(Base64.getDecoder().decode(encrypted), iv));
     }
 
     /**
