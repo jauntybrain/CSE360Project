@@ -46,7 +46,7 @@ public class InvitationCodeTestingAutomation {
         System.out.println("\nInvitationCode Class Automated Testing");
 
         /**
-        * Data that will ne used for testing.
+        * Data that will be used for testing.
         */
         String code = "secretcode";
         List<Role> testRoles = new ArrayList<>();
@@ -60,7 +60,7 @@ public class InvitationCodeTestingAutomation {
         /**
         * Testing code equality.
         */
-        assertEqual("Code Equality", testCode.getCode(), code);
+        assertEqual("Code equality", testCode.getCode(), code);
 
         /**
         * Testing code usage equality.
@@ -73,7 +73,7 @@ public class InvitationCodeTestingAutomation {
         */
         List<Role> testRoles2 = new ArrayList<>();
         testRoles2.add(Role.STUDENT);
-        assertEqual("Roles Equality", testCode.getRoles(), testRoles2);
+        assertEqual("Roles equality", testCode.getRoles(), testRoles2);
 
         /**
         * Formatting.
@@ -87,7 +87,7 @@ public class InvitationCodeTestingAutomation {
     /**
      * Asserts that the test result equals to the expected value.
      * 
-     * @param testName The test name to dislpay.
+     * @param testName The test name to display.
      * @param testCase The value to be tested.
      * @param expectedCase The expected value.
      */
@@ -105,7 +105,7 @@ public class InvitationCodeTestingAutomation {
     /**
      * Asserts that the test result value is true.
      * 
-     * @param testName The test name to dislpay.
+     * @param testName The test name to display.
      * @param testCase The value to be tested.
      */
     private static void assertTrue(String testName, boolean testCase) {

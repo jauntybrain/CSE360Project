@@ -46,7 +46,7 @@ public class InvitationCodeServiceTestingAutomation {
         System.out.println("\nInvitationCodeService Class Automated Testing");
 
         /**
-        * Data that will ne used for testing.
+        * Data that will be used for testing.
         */
         String testCode = "secretcode";
         List<Role> testRoles = new ArrayList<>();
@@ -61,7 +61,7 @@ public class InvitationCodeServiceTestingAutomation {
         * Testing roles equality.
         */
         testInstance.addInvitationCode(testCode, testRoles);
-        assertEqual("Roles Equality", testInstance.getRolesForInvitationCode(testCode), testRoles);
+        assertEqual("Roles equality", testInstance.getRolesForInvitationCode(testCode), testRoles);
 
         /**
         * Testing if one time code was used.
@@ -96,7 +96,7 @@ public class InvitationCodeServiceTestingAutomation {
     /**
      * Asserts that the test result equals to the expected value.
      * 
-     * @param testName The test name to dislpay.
+     * @param testName The test name to display.
      * @param testCase The value to be tested.
      * @param expectedCase The expected value.
      */
@@ -114,7 +114,7 @@ public class InvitationCodeServiceTestingAutomation {
     /**
      * Asserts that the test result value is true.
      * 
-     * @param testName The test name to dislpay.
+     * @param testName The test name to display.
      * @param testCase The value to be tested.
      */
     private static void assertTrue(String testName, boolean testCase) {
@@ -131,7 +131,7 @@ public class InvitationCodeServiceTestingAutomation {
     /**
      * Asserts that the test result value is false.
      * 
-     * @param testName The test name to dislpay.
+     * @param testName The test name to display.
      * @param testCase The value to be tested.
      */
     private static void assertFalse(String testName, boolean testCase) {

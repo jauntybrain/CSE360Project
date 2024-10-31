@@ -44,14 +44,14 @@ public class UserServiceTestingAutomation {
         System.out.println("\nUser Service Class Automated Testing");
 
         /**
-        * Data that will ne used for testing.
+        * Data that will be used for testing.
         */
         String testUsername = "username";
         String testPassword = "Pass1wor!d";
         UserService testInstance = UserService.getInstance();
 
         /**
-        * Testing that intially there is 0 users.
+        * Testing that initially there is 0 users.
         */
         assertEqual("Empty Users Table", testInstance.getAllUsers().size(), 0);
 
@@ -150,7 +150,7 @@ public class UserServiceTestingAutomation {
     /**
      * Asserts that the test result equals to the expected value.
      * 
-     * @param testName The test name to dislpay.
+     * @param testName The test name to display.
      * @param testCase The value to be tested.
      * @param expectedCase The expected value.
      */
@@ -168,7 +168,7 @@ public class UserServiceTestingAutomation {
     /**
      * Asserts that the test result value is true.
      * 
-     * @param testName The test name to dislpay.
+     * @param testName The test name to display.
      * @param testCase The value to be tested.
      */
     private static void assertTrue(String testName, boolean testCase) {
@@ -185,7 +185,7 @@ public class UserServiceTestingAutomation {
     /**
      * Asserts that the test result value is false.
      * 
-     * @param testName The test name to dislpay.
+     * @param testName The test name to display.
      * @param testCase The value to be tested.
      */
     private static void assertFalse(String testName, boolean testCase) {
@@ -202,7 +202,7 @@ public class UserServiceTestingAutomation {
     /**
      * Asserts that the test result value is null.
      * 
-     * @param testName The test name to dislpay.
+     * @param testName The test name to display.
      * @param testCase The value to be tested.
      */
     private static <T> void assertNull(String testName, T testCase) {
@@ -219,7 +219,7 @@ public class UserServiceTestingAutomation {
     /**
      * Asserts that the test result value is not null.
      * 
-     * @param testName The test name to dislpay.
+     * @param testName The test name to display.
      * @param testCase The value to be tested.
      */
     private static <T> void assertNotNull(String testName, T testCase) {

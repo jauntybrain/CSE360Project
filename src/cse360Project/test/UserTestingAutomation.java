@@ -46,7 +46,7 @@ public class UserTestingAutomation {
         System.out.println("\nUser Class Automated Testing");
 
         /**
-        * Data that will ne used for testing.
+        * Data that will beused for testing.
         */
         String testUsername = "some username";
         byte[] testPassword = "super secret password".getBytes();
@@ -63,19 +63,19 @@ public class UserTestingAutomation {
         /**
         * Testing username equality.
         */
-        assertEqual("Username Equality", testUser.getUsername(), testUsername);
+        assertEqual("Username equality", testUser.getUsername(), testUsername);
         
         /**
         * Testing password equality.
         */
-        assertEqual("Password Equality", testUser.getPassword(), testPassword);
+        assertEqual("Password equality", testUser.getPassword(), testPassword);
 
         /**
         * Testing topics equality.
         */
         List<Topic> testTopics = new ArrayList<>();
         testTopics.add(Topic.INTERMEDIATE);
-        assertEqual("Topics Equality", testUser.getTopics(), testTopics);
+        assertEqual("Topics equality", testUser.getTopics(), testTopics);
 
         /**
         * Testing if user is fully registered.
@@ -86,25 +86,25 @@ public class UserTestingAutomation {
         * Testing first name equality.
         */
         testUser.setFirstName(testFirstName);
-        assertEqual("First name Equality", testUser.getFirstName(),testFirstName);
+        assertEqual("First name equality", testUser.getFirstName(),testFirstName);
 
         /**
         * Testing last name equality.
         */
         testUser.setLastName(testLastName);
-        assertEqual("Last name Equality", testUser.getLastName(), testLastName);
+        assertEqual("Last name equality", testUser.getLastName(), testLastName);
 
         /**
         * Testing email equality.
         */
         testUser.setEmail(testEmail);
-        assertEqual("Email Equality", testUser.getEmail(), testEmail);
+        assertEqual("Email equality", testUser.getEmail(), testEmail);
 
         /**
         * Testing middle name equality.
         */
         testUser.setMiddleName(testMiddleName);
-        assertEqual("Middle Name Equality", testUser.getMiddleName(), testMiddleName);
+        assertEqual("Middle Name equality", testUser.getMiddleName(), testMiddleName);
 
         /**
         * Testing if user is fully registered.
@@ -123,7 +123,7 @@ public class UserTestingAutomation {
     /**
      * Asserts that the test result equals to the expected value.
      * 
-     * @param testName The test name to dislpay.
+     * @param testName The test name to display.
      * @param testCase The value to be tested.
      * @param expectedCase The expected value.
      */
@@ -141,7 +141,7 @@ public class UserTestingAutomation {
     /**
      * Asserts that the test result value is true.
      * 
-     * @param testName The test name to dislpay.
+     * @param testName The test name to display.
      * @param testCase The value to be tested.
      */
     private static void assertTrue(String testName, boolean testCase) {
@@ -158,7 +158,7 @@ public class UserTestingAutomation {
     /**
      * Asserts that the test result value is false.
      * 
-     * @param testName The test name to dislpay.
+     * @param testName The test name to display.
      * @param testCase The value to be tested.
      */
     private static void assertFalse(String testName, boolean testCase) {
