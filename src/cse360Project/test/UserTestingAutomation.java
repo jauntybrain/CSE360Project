@@ -46,7 +46,7 @@ public class UserTestingAutomation {
         System.out.println("\nUser Class Automated Testing");
 
         /**
-        * Data that will beused for testing.
+        * Data that will be used for testing.
         */
         String testUsername = "some username";
         byte[] testPassword = "super secret password".getBytes();

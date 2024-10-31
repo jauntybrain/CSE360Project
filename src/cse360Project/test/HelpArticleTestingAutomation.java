@@ -44,7 +44,7 @@ public class HelpArticleTestingAutomation {
         System.out.println("\nHelpArticle Class Automated Testing");
 
         /**
-        * Data that will beused for testing.
+        * Data that will be used for testing.
         */
         String testUuid = UUID.randomUUID().toString();
         char[] testTitle = "testTitle".toCharArray();
