@@ -110,8 +110,8 @@ public class LoginPage extends Application {
             if (user != null) {
                 if (user.getHasOneTimePassword()) {
                     // If the user has a one-time password, check if it is valid
-                    if (userService.verifyOneTimePassword(username, password)) {
-                        userService.deleteOneTimePassword(username);
+                    if (userService.verifyOneTimePassword(user.getUuid(), password)) {
+                        userService.deleteOneTimePassword(user.getUuid());
                         showPasswordSetupPage(primaryStage, user);
                     } else {
                         infoLabel.setText("One-time password expired or incorrect.");
@@ -378,7 +378,7 @@ public class LoginPage extends Application {
         // After the user clicks submit, update the password and show the login page
         dialog.showAndWait().ifPresent(password -> {
             // Update user's password
-            userService.updateUserPassword(user.getUsername(), password);
+            userService.updateUserPassword(user.getUuid(), password);
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle("Password Updated");
             alert.setHeaderText(null);

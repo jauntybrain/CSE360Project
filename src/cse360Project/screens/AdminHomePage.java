@@ -54,7 +54,7 @@ public class AdminHomePage extends Application {
     private TableView<User> userTable = new TableView<>();
 
     /**
-     * Starts the AdminHomePage and sets up the dashboardinterface.
+     * Starts the AdminHomePage and sets up the dashboard interface.
      * 
      * @param primaryStage The primary stage.
      */
@@ -209,7 +209,7 @@ public class AdminHomePage extends Application {
      */
     private void handleRoleChange(User user, Role role, CheckBox roleCheckBox) {
         if (roleCheckBox.isSelected()) {
-            userService.addRole(user.getUsername(), role);
+            userService.addRole(user.getUuid(), role);
         } else {
             // Check if removing the admin role would leave no admins
             if (role == Role.ADMIN) {
@@ -226,7 +226,7 @@ public class AdminHomePage extends Application {
                     return;
                 }
             }
-            userService.removeRole(user.getUsername(), role);
+            userService.removeRole(user.getUuid(), role);
         }
     }
 
@@ -301,7 +301,7 @@ public class AdminHomePage extends Application {
 
         confirmAlert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
-                String oneTimePassword = userService.setOneTimePassword(user.getUsername());
+                String oneTimePassword = userService.setOneTimePassword(user.getUuid());
 
                 if (oneTimePassword != null) {
                     Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -342,7 +342,7 @@ public class AdminHomePage extends Application {
         confirmAlert.setTitle("Confirm Deletion");
 
         // Check if the user is deleting their own account
-        boolean isSelfDeletion = userService.getCurrentUser().getUsername().equals(user.getUsername());
+        boolean isSelfDeletion = userService.getCurrentUser().getUuid().equals(user.getUuid());
         String additionalText = isSelfDeletion ? "\n\nNote: You will be logged out if you delete your own account."
                 : "";
 
@@ -352,7 +352,7 @@ public class AdminHomePage extends Application {
 
         confirmAlert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
-                userService.deleteUser(user.getUsername());
+                userService.deleteUser(user.getUuid());
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
                 alert.setTitle("Account Deleted");
                 alert.setHeaderText(null);

@@ -70,7 +70,7 @@ public class UserServiceTestingAutomation {
         * Testing setting current user.
         */
         testInstance.setCurrentUser(testUser);
-        assertEqual("Current User", testInstance.getCurrentUser().getUsername(), testUser.getUsername());
+        assertEqual("Current User", testInstance.getCurrentUser().getUuid(), testUser.getUuid());
 
         /**
         * Testing the username validator.
@@ -130,13 +130,15 @@ public class UserServiceTestingAutomation {
         /**
         * Testing deleting a user.
         */
-        testInstance.deleteUser(testUsername);
+        final boolean deleteUserResult = testInstance.deleteUser(testUsername);
+        assertTrue("Delete User", deleteUserResult);
         assertEqual("Delete User", testInstance.getAllUsers().size(), 0);
 
         /**
         * Clean up.
         */
-        testInstance.cleanDB();
+        final boolean cleanDBResult = testInstance.cleanDB();
+        assertTrue("Clean DB", cleanDBResult);
 
         /**
         * Formatting.

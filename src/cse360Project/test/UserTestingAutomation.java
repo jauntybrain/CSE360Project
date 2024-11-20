@@ -2,6 +2,7 @@ package cse360Project.test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import cse360Project.models.Topic;
 import cse360Project.models.User;
@@ -58,7 +59,7 @@ public class UserTestingAutomation {
         /**
         * Test user which will be used for test cases.
         */
-        User testUser = new User(testUsername, testPassword);
+        User testUser = new User(null, testUsername, testPassword);
 
         /**
         * Testing username equality.

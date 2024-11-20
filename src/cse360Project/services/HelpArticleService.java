@@ -7,6 +7,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
@@ -36,15 +37,8 @@ import cse360Project.models.Topic;
  * 
  */
 public class HelpArticleService {
-
-    private static final String JDBC_DRIVER = "org.h2.Driver";
-    private static final String DB_URL = "jdbc:h2:~/articleDatabase";
-    private static final String USER = "sa";
-    private static final String PASS = "";
-
-    private Connection connection = null;
-    private Statement statement = null;
     private EncryptionService encryptionService;
+    private DatabaseService databaseService;
 
     /**
      * Creates HelpArticleService and initializes EncryptionService.
@@ -53,43 +47,7 @@ public class HelpArticleService {
      */
     public HelpArticleService() throws Exception {
         encryptionService = new EncryptionService();
-    }
-
-    /**
-     * Connects to the H2 database and creates tables.
-     * 
-     * @throws SQLException if a database error occurs.
-     */
-    public void connectToDatabase() throws SQLException {
-        try {
-            Class.forName(JDBC_DRIVER); // Load the JDBC driver
-            connection = DriverManager.getConnection(DB_URL, USER, PASS);
-            statement = connection.createStatement();
-            createTables();
-        } catch (ClassNotFoundException e) {
-            System.err.println("JDBC Driver not found: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Creates the articles table in the database if it doesn't exist.
-     * 
-     * @throws SQLException if a database error occurs.
-     */
-    private void createTables() throws SQLException {
-        String articleTable = "CREATE TABLE IF NOT EXISTS articles ("
-                + "id INT AUTO_INCREMENT PRIMARY KEY, "
-                + "uuid VARCHAR(36) UNIQUE NOT NULL, "
-                + "title TEXT, "
-                + "authors TEXT, "
-                + "abstract TEXT, "
-                + "keywords TEXT, "
-                + "body TEXT, "
-                + "references TEXT, "
-                + "groups TEXT, "
-                + "level TEXT, "
-                + "iv TEXT)";
-        statement.execute(articleTable);
+        databaseService = DatabaseService.getInstance();
     }
 
     /**
@@ -110,42 +68,35 @@ public class HelpArticleService {
         String encryptedKeywords = encryptField(charArraysToString(article.getKeywords()), iv);
         String encryptedBody = encryptField(article.getBody(), iv);
         String encryptedReferences = encryptField(charArraysToString(article.getReferences()), iv);
-        String encryptedGroups = encryptField(charArraysToString(article.getGroups()), iv);
         String encryptedLevel = encryptField(article.getLevel().toString(), iv);
 
         String encodedIV = Base64.getEncoder().encodeToString(iv);
 
         // Prepare SQL statement
-        String insertArticle = "INSERT INTO articles (title, authors, abstract, keywords, body, references, groups, level, iv, uuid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        String updateArticle = "UPDATE articles SET title = ?, authors = ?, abstract = ?, keywords = ?, body = ?, references = ?, groups = ?, level = ?, iv = ? WHERE uuid = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(update ? updateArticle : insertArticle)) {
-            pstmt.setString(1, encryptedTitle);
-            pstmt.setString(2, encryptedAuthors);
-            pstmt.setString(3, encryptedAbstract);
-            pstmt.setString(4, encryptedKeywords);
-            pstmt.setString(5, encryptedBody);
-            pstmt.setString(6, encryptedReferences);
-            pstmt.setString(7, encryptedGroups);
-            pstmt.setString(8, encryptedLevel);
-            pstmt.setString(9, encodedIV);
-            pstmt.setString(10, article.getUuid());
+        String insertArticleSql = "INSERT INTO articles (title, authors, abstract, keywords, body, references, level, iv, uuid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String updateArticleSql = "UPDATE articles SET title = ?, authors = ?, abstract = ?, keywords = ?, body = ?, references = ?, level = ?, iv = ? WHERE uuid = ?";
 
-            pstmt.executeUpdate();
+        databaseService.executeUpdate(update ? updateArticleSql : insertArticleSql,
+                encryptedTitle, encryptedAuthors, encryptedAbstract, encryptedKeywords, encryptedBody,
+                encryptedReferences, encryptedLevel, encodedIV, article.getUuid());
+
+        // delete and reinsert groups
+        databaseService.executeUpdate("DELETE FROM article_groups WHERE article_uuid = ?", article.getUuid());
+        for (String group : article.getGroups()) {
+            databaseService.executeUpdate("INSERT INTO article_groups (article_uuid, group_name) VALUES (?, ?)",
+                    article.getUuid(), group);
         }
     }
 
     /**
      * Deletes an article from the database.
      * 
-     * @param id the UUID of the article to delete.
+     * @param uuid the UUID of the article to delete.
      * @throws SQLException if a database error occurs.
      */
-    public void deleteArticle(String id) throws SQLException {
+    public void deleteArticle(String uuid) throws SQLException {
         String deleteSQL = "DELETE FROM articles WHERE uuid = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(deleteSQL)) {
-            pstmt.setString(1, id);
-            pstmt.executeUpdate();
-        }
+        databaseService.executeUpdate(deleteSQL, uuid);
     }
 
     /**
@@ -157,27 +108,15 @@ public class HelpArticleService {
     public List<HelpArticle> getAllArticles() throws Exception {
         String query = "SELECT * FROM articles";
         List<HelpArticle> articles = new ArrayList<>();
-        try (PreparedStatement pstmt = connection.prepareStatement(query);
-                ResultSet rs = pstmt.executeQuery()) {
-            while (rs.next()) {
-                int id = rs.getInt("id");
-                HelpArticle article = decryptArticle(rs, id);
-                articles.add(article);
-            }
+
+        ResultSet rs = databaseService.executeQuery(query);
+        while (rs.next()) {
+            HelpArticle article = decryptArticle(rs);
+            List<String> groups = getArticleGroups(article.getUuid());
+            article.setGroups(groups);
+            articles.add(article);
         }
         return articles;
-    }
-
-    /**
-     * Deletes all articles from the database.
-     * 
-     * @throws SQLException if a database error occurs.
-     */
-    public void clearAllArticles() throws SQLException {
-        String deleteSQL = "DELETE FROM articles";
-        try (PreparedStatement pstmt = connection.prepareStatement(deleteSQL)) {
-            pstmt.executeUpdate();
-        }
     }
 
     /**
@@ -210,7 +149,7 @@ public class HelpArticleService {
                 String encryptedKeywords = encryptField(charArraysToString(article.getKeywords()), iv);
                 String encryptedBody = encryptField(article.getBody(), iv);
                 String encryptedReferences = encryptField(charArraysToString(article.getReferences()), iv);
-                String encryptedGroups = encryptField(charArraysToString(article.getGroups()), iv);
+                String encryptedGroups = encryptField(String.join(",", article.getGroups()), iv);
                 String encryptedLevel = encryptField(article.getLevel().toString(), iv);
 
                 // Store encrypted data
@@ -239,7 +178,7 @@ public class HelpArticleService {
     public void restoreArticles(String filename, boolean merge) throws Exception {
         // Clear all articles if not merging
         if (!merge) {
-            clearAllArticles();
+        cleanDB();
         }
 
         try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filename))) {
@@ -261,13 +200,10 @@ public class HelpArticleService {
                     // Handle merging logic
                     if (merge) {
                         String checkSQL = "SELECT uuid FROM articles WHERE uuid = ?";
-                        try (PreparedStatement pstmt = connection.prepareStatement(checkSQL)) {
-                            pstmt.setString(1, articleUuid);
-                            ResultSet rs = pstmt.executeQuery();
-                            if (rs.next()) {
-                                // Article already exists, skipping it
-                                continue;
-                            }
+                        ResultSet rs = databaseService.executeQuery(checkSQL, articleUuid);
+                        if (rs.next()) {
+                            // Article already exists, skipping it
+                            continue;
                         }
                     }
 
@@ -281,7 +217,7 @@ public class HelpArticleService {
                     char[][] keywords = stringToCharArrays(decryptFieldToString(encryptedKeywords, iv));
                     char[] body = decryptFieldToString(encryptedBody, iv).toCharArray();
                     char[][] references = stringToCharArrays(decryptFieldToString(encryptedReferences, iv));
-                    char[][] groups = stringToCharArrays(decryptFieldToString(encryptedGroups, iv));
+                    List<String> groups = Arrays.asList(decryptFieldToString(encryptedGroups, iv).split(","));
                     Topic level = Topic.valueOf(decryptFieldToString(encryptedLevel, iv));
 
                     // Create and insert article
@@ -306,12 +242,24 @@ public class HelpArticleService {
         List<HelpArticle> articles = getAllArticles();
 
         for (HelpArticle article : articles) {
-            for (char[] group : article.getGroups()) {
-                groups.add(new String(group).trim());
+            for (String group : article.getGroups()) {
+                groups.add(group);
             }
         }
 
         return new ArrayList<>(groups);
+    }
+
+    private List<String> getArticleGroups(String uuid) throws SQLException {
+        System.out.println("Getting article groups for UUID: " + uuid);
+        String query = "SELECT group_name FROM article_groups WHERE article_uuid = ?";
+        ResultSet rs = databaseService.executeQuery(query, uuid);
+        List<String> groups = new ArrayList<>();
+        while (rs.next()) {
+            System.out.println("Group: " + rs.getString("group_name"));
+            groups.add(rs.getString("group_name"));
+        }
+        return groups;
     }
 
     /**
@@ -325,8 +273,8 @@ public class HelpArticleService {
         List<HelpArticle> allArticles = getAllArticles();
         return allArticles.stream()
                 .filter(article -> {
-                    for (char[] articleGroup : article.getGroups()) {
-                        if (groups.contains(new String(articleGroup).trim())) {
+                    for (String articleGroup : article.getGroups()) {
+                        if (groups.contains(articleGroup)) {
                             return true;
                         }
                     }
@@ -365,11 +313,10 @@ public class HelpArticleService {
      * Decrypts an article.
      * 
      * @param rs article data.
-     * @param id article ID.
      * @return decrypted Article.
      * @throws Exception if decryption error occurs.
      */
-    private HelpArticle decryptArticle(ResultSet rs, int id) throws Exception {
+    private HelpArticle decryptArticle(ResultSet rs) throws Exception {
         // Get the IV
         String encodedIV = rs.getString("iv");
         byte[] iv = Base64.getDecoder().decode(encodedIV);
@@ -382,11 +329,11 @@ public class HelpArticleService {
         char[][] keywords = stringToCharArrays(decryptFieldToString(rs.getString("keywords"), iv));
         char[] body = decryptField(rs.getString("body"), iv);
         char[][] references = stringToCharArrays(decryptFieldToString(rs.getString("references"), iv));
-        char[][] groups = stringToCharArrays(decryptFieldToString(rs.getString("groups"), iv));
         Topic level = Topic.valueOf(decryptFieldToString(rs.getString("level"), iv));
 
         // Return decrypted article
-        return new HelpArticle(uuid, title, authors, abstractText, keywords, body, references, groups, level);
+        return new HelpArticle(uuid, title, authors, abstractText, keywords, body, references, new ArrayList<>(),
+                level);
     }
 
     /**
@@ -442,5 +389,19 @@ public class HelpArticleService {
             charArrays[i] = lines[i].toCharArray();
         }
         return charArrays;
+    }
+
+    /**
+     * Cleans the database of all articles.
+     * 
+     * @return true if the database was cleaned successfully, false otherwise.
+     */
+    public boolean cleanDB() {
+        try {
+            databaseService.executeUpdate("DELETE FROM articles");
+            return true;
+        } catch (SQLException e) {
+            return false;
+        }
     }
 }

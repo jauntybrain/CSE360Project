@@ -1,9 +1,9 @@
 package cse360Project.services;
 
-import java.io.*;
-import java.util.HashMap;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import cse360Project.models.InvitationCode;
@@ -28,16 +28,14 @@ import cse360Project.models.Role;
  */
 public class InvitationCodeService {
     private static InvitationCodeService instance;
-
-    private static final String INVITATION_CODES_FILE = "invitationCodes.txt";
-    private Map<String, InvitationCode> invitationCodes = new HashMap<>();
+    private final DatabaseService databaseService;
 
     /**
      * Private constructor to initialize the service and load invitation codes from
      * local file.
      */
     private InvitationCodeService() {
-        loadInvitationCodesFromFile();
+        databaseService = DatabaseService.getInstance();
     }
 
     /**
@@ -52,32 +50,94 @@ public class InvitationCodeService {
         return instance;
     }
 
+    private InvitationCode getInvitationCode(String code) {
+        try {
+            String invitationSql = """
+                        SELECT * FROM invitation_codes WHERE code = ?
+                    """;
+            final ResultSet resultSet = databaseService.executeQuery(invitationSql, code);
+
+            if (resultSet.next()) {
+                final List<Role> roles = getInvitationCodeRoles(resultSet.getString("uuid"));
+                return new InvitationCode(resultSet.getString("uuid"), resultSet.getString("code"), roles);
+            }
+        } catch (SQLException e) {
+            return null;
+        }
+        return null;
+    }
+
+    private List<Role> getInvitationCodeRoles(String uuid) throws SQLException {
+        String invitationCodeRolesSql = """
+                    SELECT role FROM invitation_code_roles WHERE invitation_code_id = ?
+                """;
+        final ResultSet resultSet = databaseService.executeQuery(invitationCodeRolesSql, uuid);
+        final List<Role> roles = new ArrayList<>();
+        while (resultSet.next()) {
+            roles.add(Role.valueOf(resultSet.getString("role")));
+        }
+        return roles;
+    }
+
     /**
-     * Saves the current invitation codes to a local file.
+     * Inserts an invitation code into the database.
+     * 
+     * @param invitation The invitation code.
+     * @throws SQLException if a database access error occurs
      */
-    private void saveInvitationCodesToFile() {
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(INVITATION_CODES_FILE))) {
-            oos.writeObject(invitationCodes);
-        } catch (IOException e) {
-            e.printStackTrace();
+    private void insertInvitationCode(InvitationCode invitation) throws SQLException {
+
+        // Save invitation code details
+        String invitationSql = """
+                    INSERT INTO invitation_codes (uuid, code, used)
+                    VALUES (?, ?, ?)
+                """;
+
+        databaseService.executeUpdate(invitationSql, invitation.getUuid(), invitation.getCode(),
+                invitation.isUsed());
+
+        insertInvitationCodeRoles(invitation);
+
+    }
+
+    /**
+     * Inserts the roles for an invitation code into the database.
+     * 
+     * @param invitation The invitation code.
+     * @throws SQLException if a database access error occurs
+     */
+    private void insertInvitationCodeRoles(InvitationCode invitation) throws SQLException {
+        for (Role role : invitation.getRoles()) {
+            insertInvitationCodeRole(invitation, role);
         }
     }
 
     /**
-     * Loads invitation codes from a local file.
+     * Inserts an invitation code role into the database.
+     * 
+     * @param invitation The invitation code.
+     * @param role       The role to insert.
+     * @throws SQLException if a database access error occurs
      */
-    @SuppressWarnings("unchecked")
-    private void loadInvitationCodesFromFile() {
-        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(INVITATION_CODES_FILE))) {
-            Object obj = ois.readObject();
-            if (obj instanceof Map) {
-                invitationCodes = (Map<String, InvitationCode>) obj;
-            } else {
-                invitationCodes = new HashMap<>();
-            }
-        } catch (IOException | ClassNotFoundException e) {
-            invitationCodes = new HashMap<>();
-        }
+    private void insertInvitationCodeRole(InvitationCode invitation, Role role) throws SQLException {
+        String invitationCodeRolesSql = """
+                    INSERT INTO invitation_code_roles (invitation_code_id, role)
+                    VALUES (?, ?)
+                """;
+        databaseService.executeUpdate(invitationCodeRolesSql, invitation.getUuid(), role.name());
+    }
+
+    /**
+     * Sets the used status of an invitation code in the database.
+     * 
+     * @param invitation The invitation code.
+     * @throws SQLException if a database access error occurs
+     */
+    public void setInvitationCodeUsed(InvitationCode invitation) throws SQLException {
+        String invitationSql = """
+                    UPDATE invitation_codes SET used = ? WHERE uuid = ?
+                """;
+        databaseService.executeUpdate(invitationSql, invitation.isUsed(), invitation.getUuid());
     }
 
     /**
@@ -86,9 +146,14 @@ public class InvitationCodeService {
      * @param code  The invitation code.
      * @param roles The list of roles assigned with the invitation code.
      */
-    public void addInvitationCode(String code, List<Role> roles) {
-        invitationCodes.put(code, new InvitationCode(code, roles));
-        saveInvitationCodesToFile();
+    public boolean addInvitationCode(String code, List<Role> roles) {
+        final InvitationCode newCode = new InvitationCode(null, code, roles);
+        try {
+            insertInvitationCode(newCode);
+            return true;
+        } catch (SQLException e) {
+            return false;
+        }
     }
 
     /**
@@ -99,8 +164,8 @@ public class InvitationCodeService {
      */
     public String generateOneTimeCode(List<Role> roles) {
         String code = UUID.randomUUID().toString();
-        addInvitationCode(code, roles);
-        return code;
+        final boolean success = addInvitationCode(code, roles);
+        return success ? code : null;
     }
 
     /**
@@ -110,7 +175,7 @@ public class InvitationCodeService {
      * @return true if the invitation code is valid and not used, false otherwise.
      */
     public boolean validateInvitationCode(String code) {
-        InvitationCode invitationCode = invitationCodes.get(code);
+        final InvitationCode invitationCode = getInvitationCode(code);
         return invitationCode != null && !invitationCode.isUsed();
     }
 
@@ -122,7 +187,7 @@ public class InvitationCodeService {
      *         is invalid or used.
      */
     public List<Role> getRolesForInvitationCode(String code) {
-        InvitationCode invitationCode = invitationCodes.get(code);
+        final InvitationCode invitationCode = getInvitationCode(code);
         if (invitationCode != null && !invitationCode.isUsed()) {
             return invitationCode.getRoles();
         }
@@ -138,21 +203,30 @@ public class InvitationCodeService {
      *         is invalid or already used.
      */
     public List<Role> redeemInvitationCode(String code) {
-        InvitationCode invitationCode = invitationCodes.get(code);
+        final InvitationCode invitationCode = getInvitationCode(code);
         if (invitationCode != null && !invitationCode.isUsed()) {
             invitationCode.setUsed(true);
-            saveInvitationCodesToFile();
+            try {
+                setInvitationCodeUsed(invitationCode);
+            } catch (SQLException e) {
+                return null;
+            }
             return invitationCode.getRoles();
         }
         return null;
     }
 
     /**
-     * Cleans the existing database.
+     * Cleans the database of all invitation codes.
      * 
+     * @return true if the database was cleaned successfully, false otherwise.
      */
-    public void cleanDB() {
-        File invitationCodesFile = new File(INVITATION_CODES_FILE);
-        invitationCodesFile.delete();
+    public boolean cleanDB() {
+        try {
+            databaseService.executeUpdate("DELETE FROM invitation_codes");
+            return true;
+        } catch (SQLException e) {
+            return false;
+        }
     }
 }

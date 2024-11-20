@@ -22,6 +22,7 @@ import java.io.File;
 import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Optional;
@@ -77,7 +78,6 @@ public class HelpArticlesPage extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception {
         helpArticleService = new HelpArticleService();
-        helpArticleService.connectToDatabase();
 
         tableView = new TableView<>();
         setupTableView();
@@ -348,11 +348,14 @@ public class HelpArticlesPage extends Application {
                     references[i] = referencesArray[i].trim().toCharArray();
                 }
 
-                String[] groupsArray = groupsText.split(",");
-                char[][] groups = new char[groupsArray.length][];
-                for (int i = 0; i < groupsArray.length; i++) {
-                    groups[i] = groupsArray[i].trim().toCharArray();
+                String[] groupsArray = groupsText.replaceAll("\\s+", "").split(",");
+                List<String> groups = Arrays.asList(groupsArray);
+
+                for (String group : groupsArray) {
+                    System.out.println("Group: " + group);
                 }
+
+                System.out.println("Groups: " + groups);
 
                 HelpArticle article = new HelpArticle(alreadyExists ? existingArticle.getUuid() : null,
                         title.toCharArray(),

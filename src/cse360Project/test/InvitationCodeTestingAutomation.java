@@ -55,7 +55,7 @@ public class InvitationCodeTestingAutomation {
         /**
         * Test code that will be used for test cases.
         */
-        InvitationCode testCode = new InvitationCode(code, testRoles);
+        InvitationCode testCode = new InvitationCode(null, code, testRoles);
 
         /**
         * Testing code equality.

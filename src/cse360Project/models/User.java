@@ -8,13 +8,20 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.UUID;
 
 /*******
- * <p> User Class </p>
+ * <p>
+ * User Class
+ * </p>
  * 
- * <p> Description: A class representing a user with various attributes and roles. </p>
+ * <p>
+ * Description: A class representing a user with various attributes and roles.
+ * </p>
  * 
- * <p> Copyright: CSE 360 Team Th02 © 2024 </p>
+ * <p>
+ * Copyright: CSE 360 Team Th02 © 2024
+ * </p>
  * 
  * @author CSE 360 Team Th02
  * 
@@ -24,7 +31,9 @@ import java.util.List;
  */
 public class User implements Serializable {
     private static final long serialVersionUID = 1L;
-	private String username;
+
+    private String uuid;
+    private String username;
     private byte[] password;
     private String email;
     private String firstName;
@@ -36,13 +45,15 @@ public class User implements Serializable {
     private boolean hasOneTimePassword;
     private LocalDateTime oneTimePasswordExpires;
 
-    /** 
+    /**
      * Constructor to initialize a User with a username and hashed password.
      * 
-     * @param username The username of the user.
+     * @param uuid 			 The unique identifier of the user.
+     * @param username       The username of the user.
      * @param hashedPassword The hashed password of the user.
      */
-    public User(String username, byte[] hashedPassword) {
+    public User(String uuid, String username, byte[] hashedPassword) {
+        this.uuid = uuid != null ? uuid : UUID.randomUUID().toString();
         this.username = username;
         this.password = hashedPassword;
         this.hasOneTimePassword = false;
@@ -66,8 +77,9 @@ public class User implements Serializable {
      * Custom deserialization method to read the object.
      * 
      * @param ois The ObjectInputStream to read the object from.
-     * @throws IOException If an I/O error occurs.
-     * @throws ClassNotFoundException If the class of a serialized object cannot be found.
+     * @throws IOException            If an I/O error occurs.
+     * @throws ClassNotFoundException If the class of a serialized object cannot be
+     *                                found.
      */
     private void readObject(ObjectInputStream ois) throws IOException, ClassNotFoundException {
         ois.defaultReadObject();
@@ -76,7 +88,8 @@ public class User implements Serializable {
     }
 
     /**
-     * Checks if the user has fully registered by checking if the first name, last name, and email are not null.
+     * Checks if the user has fully registered by checking if the first name, last
+     * name, and email are not null.
      * 
      * @return true if the user has fully registered, false otherwise.
      */
@@ -84,7 +97,20 @@ public class User implements Serializable {
         return firstName != null && lastName != null && email != null;
     }
 
-    // Getters and setters for the User class attributes
+    /**
+     * Gets the UUID of the user.
+     * 
+     * @return the UUID.
+     */
+    public String getUuid() {
+        return uuid;
+    }
+
+    /**
+     * Gets the username of the user.
+     * 
+     * @return the username.
+     */
     public String getUsername() {
         return username;
     }
@@ -194,7 +220,7 @@ public class User implements Serializable {
      * @return the preferred name.
      */
     public String getPreferredName() {
-    	return preferredName;
+        return preferredName;
     }
 
     /**
@@ -257,7 +283,7 @@ public class User implements Serializable {
      * @param oneTimePassword the has one time password flag to set.
      */
     public void setHasOneTimePassword(boolean oneTimePassword) {
-    	hasOneTimePassword = oneTimePassword;
+        hasOneTimePassword = oneTimePassword;
     }
 
     /**

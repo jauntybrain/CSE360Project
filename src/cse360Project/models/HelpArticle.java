@@ -1,6 +1,7 @@
 package cse360Project.models;
 
 import java.io.Serializable;
+import java.util.List;
 import java.util.UUID;
 
 /*******
@@ -20,7 +21,6 @@ import java.util.UUID;
  * 
  */
 public class HelpArticle implements Serializable {
-
     private static final long serialVersionUID = 1L;
 
     private String uuid;
@@ -30,7 +30,7 @@ public class HelpArticle implements Serializable {
     private char[][] keywords;
     private char[] body;
     private char[][] references;
-    private char[][] groups;
+    private List<String> groups;
     private Topic level;
 
     /**
@@ -47,7 +47,7 @@ public class HelpArticle implements Serializable {
      * @param level        level of the article.
      */
     public HelpArticle(String uuid, char[] title, char[][] authors, char[] abstractText,
-            char[][] keywords, char[] body, char[][] references, char[][] groups, Topic level) {
+            char[][] keywords, char[] body, char[][] references, List<String> groups, Topic level) {
         this.uuid = uuid != null ? uuid : UUID.randomUUID().toString();
         this.title = title;
         this.authors = authors;
@@ -181,7 +181,7 @@ public class HelpArticle implements Serializable {
      * 
      * @return the list of groups.
      */
-    public char[][] getGroups() {
+    public List<String> getGroups() {
         return groups;
     }
 
@@ -190,7 +190,7 @@ public class HelpArticle implements Serializable {
      * 
      * @param groups the list of groups to set.
      */
-    public void setGroups(char[][] groups) {
+    public void setGroups(List<String> groups) {
         this.groups = groups;
     }
 
@@ -227,7 +227,7 @@ public class HelpArticle implements Serializable {
      * @return groups as a string.
      */
     public String getGroupsString() {
-        return getConcatenatedString(groups);
+        return String.join(", ", getGroups());
     }
 
     /**

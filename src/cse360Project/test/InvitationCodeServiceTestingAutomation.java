@@ -82,7 +82,8 @@ public class InvitationCodeServiceTestingAutomation {
         /**
         * Clean up.
         */
-        testInstance.cleanDB();
+        final boolean cleanDBResult = testInstance.cleanDB();
+        assertTrue("Clean DB", cleanDBResult);
         
         /**
         * Formatting.

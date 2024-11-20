@@ -7,12 +7,15 @@ import java.util.Map;
 import java.util.UUID;
 
 import cse360Project.models.Role;
+import cse360Project.models.Topic;
 import cse360Project.models.User;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.io.*;
 
 /*******
  * <p>
@@ -32,10 +35,10 @@ import java.io.*;
  */
 public class UserService {
     private static UserService instance;
-
-    private static final String USERS_FILE = "users.txt";
-    private Map<String, User> users = new HashMap<>();
     private InvitationCodeService invitationCodeService;
+    private DatabaseService databaseService;
+
+    private Map<String, User> users = new HashMap<>(); // uuid -> user
     private User currentUser;
     private String currentInvitationCode;
 
@@ -43,10 +46,15 @@ public class UserService {
      * Private constructor to initialize the service and load users from local file.
      */
     private UserService() {
-        loadUsersFromFile();
-        invitationCodeService = InvitationCodeService.getInstance();
-        currentUser = null;
-        currentInvitationCode = null;
+        try {
+            invitationCodeService = InvitationCodeService.getInstance();
+            databaseService = DatabaseService.getInstance();
+            currentUser = null;
+            currentInvitationCode = null;
+            loadUsersFromDB();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -62,31 +70,210 @@ public class UserService {
     }
 
     /**
-     * Saves the current users to a local file.
+     * Inserts a user into the database.
+     * 
+     * @param user The user to insert.
+     * @throws SQLException if an error occurs while inserting the user.
      */
-    private void saveUsersToFile() {
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(USERS_FILE))) {
-            oos.writeObject(users);
-        } catch (IOException e) {
-            e.printStackTrace();
+    private void insertUser(User user) throws SQLException {
+        // Save user details
+        String userSql = """
+                    INSERT INTO users (uuid, username, password, email, first_name, middle_name,
+                    last_name, preferred_name, has_one_time_password, one_time_password_expires)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+
+        databaseService.executeUpdate(userSql, user.getUuid(), user.getUsername(), user.getPassword(),
+                user.getEmail(),
+                user.getFirstName(), user.getMiddleName(), user.getLastName(), user.getPreferredName(),
+                user.getHasOneTimePassword(), user.getOneTimePasswordExpires());
+
+        insertRoles(user);
+        insertTopics(user);
+    }
+
+    /**
+     * Inserts the roles for a user into the database.
+     * 
+     * @param user The user to insert the roles for.
+     * @throws SQLException if an error occurs while inserting the roles.
+     */
+    private void insertRoles(User user) throws SQLException {
+        for (Role role : user.getRoles()) {
+            insertUserRole(user, role);
         }
     }
 
     /**
-     * Loads users from a local file.
+     * Inserts the topics for a user into the database.
+     * 
+     * @param user The user to insert the topics for.
+     * @throws SQLException if an error occurs while inserting the topics.
      */
-    @SuppressWarnings("unchecked")
-    private void loadUsersFromFile() {
-        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(USERS_FILE))) {
-            Object obj = ois.readObject();
-            if (obj instanceof Map) {
-                users = (Map<String, User>) obj;
-            } else {
-                users = new HashMap<>();
-            }
-        } catch (IOException | ClassNotFoundException e) {
-            users = new HashMap<>();
+    private void insertTopics(User user) throws SQLException {
+        for (Topic topic : user.getTopics()) {
+            insertUserTopic(user, topic);
         }
+    }
+
+    /**
+     * Inserts a role for a user into the database.
+     * 
+     * @param user The user to insert the role for.
+     * @param role The role to insert.
+     * @throws SQLException if an error occurs while inserting the role.
+     */
+    private void insertUserRole(User user, Role role) throws SQLException {
+        String rolesSql = """
+                    INSERT INTO user_roles (user_id, role)
+                    VALUES (?, ?)
+                """;
+        databaseService.executeUpdate(rolesSql, user.getUuid(), role.name());
+    }
+
+    /**
+     * Inserts a topic for a user into the database.
+     * 
+     * @param user  The user to insert the topic for.
+     * @param topic The topic to insert.
+     * @throws SQLException if an error occurs while inserting the topic.
+     */
+    private void insertUserTopic(User user, Topic topic) throws SQLException {
+        String topicsSql = """
+                    INSERT INTO user_topics (user_id, topic)
+                    VALUES (?, ?)
+                """;
+        databaseService.executeUpdate(topicsSql, user.getUuid(), topic.name());
+    }
+
+    /**
+     * Updates a user in the database.
+     * 
+     * @param user The user to update.
+     * @throws SQLException if an error occurs while updating the user.
+     */
+    private void updateUserInDB(User user) throws SQLException {
+        String userSql = """
+                    UPDATE users
+                    SET email = ?,
+                    password = ?,
+                    first_name = ?,
+                    middle_name = ?,
+                    last_name = ?,
+                    preferred_name = ?,
+                    has_one_time_password = ?,
+                    one_time_password_expires = ?
+                    WHERE uuid = ?
+                """;
+
+        databaseService.executeUpdate(userSql, user.getEmail(), user.getPassword(), user.getFirstName(),
+                user.getMiddleName(), user.getLastName(), user.getPreferredName(), user.getHasOneTimePassword(),
+                user.getOneTimePasswordExpires(), user.getUuid());
+
+        // delete roles and topics, re-insert one by one
+        deleteUserRoles(user);
+        deleteUserTopics(user);
+        insertRoles(user);
+        insertTopics(user);
+    }
+
+    /**
+     * Deletes the roles for a user from the database.
+     * 
+     * @param user The user to delete the roles for.
+     * @throws SQLException if an error occurs while deleting the roles.
+     */
+    private void deleteUserRoles(User user) throws SQLException {
+        String rolesSql = "DELETE FROM user_roles WHERE user_id = ?";
+        databaseService.executeUpdate(rolesSql, user.getUuid());
+    }
+
+    /**
+     * Deletes the topics for a user from the database.
+     * 
+     * @param user The user to delete the topics for.
+     * @throws SQLException if an error occurs while deleting the topics.
+     */
+    private void deleteUserTopics(User user) throws SQLException {
+        String topicsSql = "DELETE FROM user_topics WHERE user_id = ?";
+        databaseService.executeUpdate(topicsSql, user.getUuid());
+    }
+
+    /**
+     * Loads users from the database.
+     * 
+     * @throws SQLException if an error occurs while loading the users.
+     */
+    private void loadUsersFromDB() throws SQLException {
+        users.clear();
+
+        String sql = "SELECT * FROM users";
+        ResultSet rs = databaseService.executeQuery(sql);
+
+        while (rs.next()) {
+            String uuid = rs.getString("uuid");
+            String username = rs.getString("username");
+            byte[] password = rs.getBytes("password");
+            User user = new User(uuid, username, password);
+
+            user.setEmail(rs.getString("email"));
+            user.setFirstName(rs.getString("first_name"));
+            user.setMiddleName(rs.getString("middle_name"));
+            user.setLastName(rs.getString("last_name"));
+            user.setPreferredName(rs.getString("preferred_name"));
+            user.setHasOneTimePassword(rs.getBoolean("has_one_time_password"));
+
+            Timestamp expires = rs.getTimestamp("one_time_password_expires");
+            if (expires != null) {
+                user.setOneTimePasswordExpires(expires.toLocalDateTime());
+            }
+
+            // Load roles
+            loadUserRoles(user);
+            // Load topics
+            loadUserTopics(user);
+
+            users.put(uuid, user);
+        }
+    }
+
+    /**
+     * Loads the roles for a user from the database.
+     * 
+     * @param user The user to load the roles for.
+     * @throws SQLException if an error occurs while loading the roles.
+     */
+    private void loadUserRoles(User user) throws SQLException {
+        String sql = "SELECT role FROM user_roles WHERE user_id = ?";
+        ResultSet rs = databaseService.executeQuery(sql, user.getUuid());
+        while (rs.next()) {
+            user.getRoles().add(Role.valueOf(rs.getString("role")));
+        }
+    }
+
+    /**
+     * Loads the topics for a user from the database.
+     * 
+     * @param user The user to load the topics for.
+     * @throws SQLException if an error occurs while loading the topics.
+     */
+    private void loadUserTopics(User user) throws SQLException {
+        String sql = "SELECT topic FROM user_topics WHERE user_id = ?";
+        ResultSet rs = databaseService.executeQuery(sql, user.getUuid());
+        while (rs.next()) {
+            user.getTopics().add(Topic.valueOf(rs.getString("topic")));
+        }
+    }
+
+    /**
+     * Deletes a user from the database.
+     * 
+     * @param uuid The id of the user to delete.
+     * @throws SQLException if an error occurs while deleting the user.
+     */
+    private void deleteUserFromDB(String uuid) throws SQLException {
+        String sql = "DELETE FROM users WHERE uuid = ?";
+        databaseService.executeUpdate(sql, uuid);
     }
 
     /**
@@ -181,12 +368,12 @@ public class UserService {
             throw new IllegalArgumentException(
                     "Invalid password. Must be 8-36 characters long, include an uppercase letter, a number, and a special character.");
         }
-        if (users.containsKey(username)) {
+        if (checkUsernameTaken(username)) {
             throw new IllegalArgumentException("Username is already taken.");
         }
         try {
             byte[] hashedPassword = hashPassword(password);
-            User registeredUser = new User(username, hashedPassword);
+            User registeredUser = new User(null, username, hashedPassword);
             if (users.isEmpty()) {
                 registeredUser.getRoles().add(Role.ADMIN);
             } else if (currentInvitationCode != null) {
@@ -197,14 +384,18 @@ public class UserService {
                     System.out.println("No roles found for this invitation code.");
                 }
             }
-            if (users.containsKey(username)) {
+            if (users.containsKey(registeredUser.getUuid())) {
                 throw new IllegalArgumentException("Username is already taken.");
             }
-            users.put(username, registeredUser);
+            users.put(registeredUser.getUuid(), registeredUser);
             setCurrentUser(registeredUser);
-            saveUsersToFile();
+            insertUser(registeredUser);
             return registeredUser;
         } catch (NoSuchAlgorithmException e) {
+            System.out.println("Error hashing password: " + e.getMessage());
+            return null;
+        } catch (SQLException e) {
+            System.out.println("Error registering user: " + e.getMessage());
             return null;
         }
     }
@@ -218,7 +409,7 @@ public class UserService {
      */
     public User login(String username, String password) {
         try {
-            User user = users.get(username);
+            User user = getUserByUsername(username);
             if (user != null && validatePassword(password, user.getPassword())) {
                 setCurrentUser(user);
                 return user;
@@ -227,6 +418,30 @@ public class UserService {
         } catch (NoSuchAlgorithmException e) {
             return null;
         }
+    }
+
+    /**
+     * Checks if a username is taken.
+     * 
+     * @param username The username to check.
+     * @return true if the username is taken, false otherwise.
+     */
+    private boolean checkUsernameTaken(String username) {
+        return users.values().stream()
+                .anyMatch(user -> user.getUsername().equals(username));
+    }
+
+    /**
+     * Returns a user by their username.
+     * 
+     * @param username The username of the user to return.
+     * @return The user with the given username, or null if no such user exists.
+     */
+    private User getUserByUsername(String username) {
+        return users.values().stream()
+                .filter(user -> user.getUsername().equals(username))
+                .findFirst()
+                .orElse(null);
     }
 
     /**
@@ -243,48 +458,66 @@ public class UserService {
      * 
      * @param user The user to update.
      */
-    public void updateUser(User user) {
-        users.put(user.getUsername(), user);
-        saveUsersToFile();
+    public boolean updateUser(User user) {
+        users.put(user.getUuid(), user);
+        try {
+            updateUserInDB(user);
+            return true;
+        } catch (SQLException e) {
+            return false;
+        }
     }
 
     /**
      * Deletes a user from the user service and saves it to the local file.
      * 
-     * @param username The username of the user to delete.
+     * @param uuid The id of the user to delete.
      */
-    public void deleteUser(String username) {
-        if (users.containsKey(username)) {
-            users.remove(username);
-            if (currentUser != null && currentUser.getUsername().equals(username)) {
+    public boolean deleteUser(String uuid) {
+        if (users.containsKey(uuid)) {
+            users.remove(uuid);
+            if (currentUser != null && currentUser.getUuid().equals(uuid)) {
                 currentUser = null;
             }
-            saveUsersToFile();
+
+            try {
+                deleteUserFromDB(uuid);
+                return true;
+            } catch (SQLException e) {
+                return false;
+            }
         }
+        return false;
     }
 
     /**
      * Adds a role to a user.
      * 
-     * @param username The username of the user.
-     * @param role     The role to add.
+     * @param uuid The id of the user.
+     * @param role The role to add.
      */
-    public void addRole(String username, Role role) {
-        User user = users.get(username);
+    public boolean addRole(String uuid, Role role) {
+        User user = users.get(uuid);
         if (user != null) {
             user.getRoles().add(role);
-            saveUsersToFile();
+            try {
+                updateUserInDB(user);
+                return true;
+            } catch (SQLException e) {
+                return false;
+            }
         }
+        return false;
     }
 
     /**
      * Removes a role from a user.
      * 
-     * @param username The username of the user.
-     * @param role     The role to remove.
+     * @param uuid The id of the user.
+     * @param role The role to remove.
      */
-    public void removeRole(String username, Role role) {
-        User user = users.get(username);
+    public boolean removeRole(String uuid, Role role) {
+        User user = users.get(uuid);
         if (user != null) {
             if (role == Role.ADMIN && user.getRoles().contains(Role.ADMIN)) {
                 long adminCount = users.values().stream()
@@ -292,22 +525,28 @@ public class UserService {
                         .count();
                 if (adminCount <= 1) {
                     System.out.println("Cannot remove the admin role from the last admin user.");
-                    return;
+                    return false;
                 }
             }
             user.getRoles().remove(role);
-            saveUsersToFile();
+            try {
+                updateUserInDB(user);
+                return true;
+            } catch (SQLException e) {
+                return false;
+            }
         }
+        return false;
     }
 
     /**
      * Updates a user's password.
      * 
-     * @param username    The username of the user.
+     * @param uuid        The id of the user.
      * @param newPassword The new password of the user.
      */
-    public void updateUserPassword(String username, String newPassword) {
-        User user = users.get(username);
+    public void updateUserPassword(String uuid, String newPassword) {
+        User user = users.get(uuid);
         if (user != null) {
             try {
                 byte[] newPasswordHash = hashPassword(newPassword);
@@ -315,7 +554,7 @@ public class UserService {
                 user.setHasOneTimePassword(false);
                 user.setOneTimePasswordExpires(null);
                 updateUser(user);
-                saveUsersToFile();
+                // saveUsersToFile();
             } catch (NoSuchAlgorithmException e) {
                 System.err.println("Error hashing password: " + e.getMessage());
             }
@@ -359,22 +598,23 @@ public class UserService {
     /**
      * Sets a one-time password for a user.
      * 
-     * @param username The username of the user.
+     * @param uuid The id of the user.
      * @return The one-time password.
      */
-    public String setOneTimePassword(String username) {
-        User user = users.get(username);
+    public String setOneTimePassword(String uuid) {
+        User user = users.get(uuid);
         if (user != null) {
             String oneTimePassword = generateOneTimePassword();
             LocalDateTime expiration = LocalDateTime.now().plusMinutes(10);
             try {
-
                 user.setPassword(hashPassword(oneTimePassword));
             } catch (NoSuchAlgorithmException e) {
+                System.out.println("Error hashing password: " + e.getMessage());
                 return null;
             }
             user.setHasOneTimePassword(true);
             user.setOneTimePasswordExpires(expiration);
+            updateUser(user);
             return oneTimePassword;
         } else {
             return null;
@@ -384,13 +624,26 @@ public class UserService {
     /**
      * Verifies that one-time password is valid for a user.
      * 
-     * @param username        The username of the user.
+     * @param uuid            The id of the user.
      * @param oneTimePassword The one-time password to check.
      * @return true if the one-time password is valid, false otherwise.
      */
-    public boolean verifyOneTimePassword(String username, String oneTimePassword) {
-        User user = users.get(username);
+    public boolean verifyOneTimePassword(String uuid, String oneTimePassword) {
+        User user = users.get(uuid);
+        System.out.println("User found? " + (user != null));
+        System.out.println("User has one-time password? " + user.getHasOneTimePassword());
         if (user != null && user.getHasOneTimePassword()) {
+            System.out.println("One-time password expires: " + user.getOneTimePasswordExpires());
+            System.out.println("Current time: " + LocalDateTime.now());
+            System.out.println("One-time password is valid: "
+                    + LocalDateTime.now().isBefore(user.getOneTimePasswordExpires()));
+            try {
+                System.out.println("Comparing: " + hashPassword(oneTimePassword).toString() + " and "
+                        + user.getPassword());
+            } catch (NoSuchAlgorithmException e) {
+                System.out.println("Error hashing password: " + e.getMessage());
+                return false;
+            }
             if (LocalDateTime.now().isBefore(user.getOneTimePasswordExpires())) {
                 try {
                     return validatePassword(oneTimePassword, user.getPassword());
@@ -405,10 +658,10 @@ public class UserService {
     /**
      * Deletes the one-time password for a user.
      * 
-     * @param username The username of the user.
+     * @param uuid The id of the user.
      */
-    public void deleteOneTimePassword(String username) {
-        User user = users.get(username);
+    public void deleteOneTimePassword(String uuid) {
+        User user = users.get(uuid);
         if (user != null) {
             user.setHasOneTimePassword(false);
             user.setOneTimePasswordExpires(null);
@@ -434,12 +687,17 @@ public class UserService {
     }
 
     /**
-     * Cleans the existing database.
+     * Cleans the database of all users.
      * 
+     * @return true if the database was cleaned successfully, false otherwise.
      */
-    public void cleanDB() {
-        File usersFile = new File(USERS_FILE);
-        usersFile.delete();
-        invitationCodeService.cleanDB();
+    public boolean cleanDB() {
+        users.clear();
+        try {
+            databaseService.executeUpdate("DELETE FROM users");
+            return true;
+        } catch (SQLException e) {
+            return false;
+        }
     }
 }

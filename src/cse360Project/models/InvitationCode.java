@@ -2,6 +2,7 @@ package cse360Project.models;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.UUID;
 
 /*******
  * <p>
@@ -21,6 +22,8 @@ import java.util.List;
  */
 public class InvitationCode implements Serializable {
     private static final long serialVersionUID = 1L;
+
+    private String uuid;
     private String code;
     private List<Role> roles;
     private boolean used;
@@ -28,13 +31,24 @@ public class InvitationCode implements Serializable {
     /**
      * Constructor to initialize an InvitationCode with a code and roles.
      * 
+     * @param uuid	The unique identifier of the invitation code.
      * @param code  The invitation code.
      * @param roles The list of roles defined for the code.
      */
-    public InvitationCode(String code, List<Role> roles) {
+    public InvitationCode(String uuid, String code, List<Role> roles) {
+        this.uuid = uuid != null ? uuid : UUID.randomUUID().toString();
         this.code = code;
         this.roles = roles;
         this.used = false;
+    }
+
+    /**
+     * Gets the UUID of the invitation code.
+     * 
+     * @return The UUID of the invitation code.
+     */
+    public String getUuid() {
+        return uuid;
     }
 
     /**
