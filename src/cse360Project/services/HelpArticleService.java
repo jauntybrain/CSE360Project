@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -136,7 +137,7 @@ public class HelpArticleService {
      */
     public List<HelpArticle> getAllArticles() throws Exception {
         String query = """
-                SELECT *
+                SELECT DISTINCT *
                 FROM articles a
                 JOIN article_group_articles aga ON a.uuid = aga.article_id
                 JOIN article_groups ag ON aga.group_id = ag.id
@@ -146,13 +147,18 @@ public class HelpArticleService {
                 """;
 
         List<HelpArticle> articles = new ArrayList<>();
+        Set<String> seenUuids = new HashSet<>(); // Track seen UUIDs
 
         ResultSet rs = databaseService.executeQuery(query, userService.getCurrentUser().getUuid());
         while (rs.next()) {
-            HelpArticle article = decryptArticle(rs);
-            List<Integer> groups = getArticleGroupIds(article.getUuid());
-            article.setGroups(groups);
-            articles.add(article);
+            String uuid = rs.getString("uuid");
+            if (!seenUuids.contains(uuid)) { // Check if UUID has been seen
+                HelpArticle article = decryptArticle(rs);
+                List<Integer> groups = getArticleGroupIds(article.getUuid());
+                article.setGroups(groups);
+                articles.add(article);
+                seenUuids.add(uuid); // Mark UUID as seen
+            }
         }
         return articles;
     }
@@ -314,7 +320,7 @@ public class HelpArticleService {
                             "DELETE FROM article_group_users WHERE group_id = ? AND user_id = ?",
                             groupUser.getGroupId(), groupUser.getUserId());
                 }
-                
+
                 // insert relationship
                 databaseService.executeUpdate(
                         "INSERT INTO article_group_users (group_id, user_id, is_admin) VALUES (?, ?, ?)",
@@ -517,7 +523,7 @@ public class HelpArticleService {
                     "INSERT INTO article_group_users (group_id, user_id, is_admin) VALUES (?, ?, true)",
                     group.getId(), currentUser.getUuid());
         }
-        
+
         return group.getId();
     }
 
@@ -661,8 +667,8 @@ public class HelpArticleService {
     /**
      * Sends a help request.
      * 
-     * @param userId    the ID of the user.
-     * @param message   the message.
+     * @param userId        the ID of the user.
+     * @param message       the message.
      * @param searchHistory the search history.
      * @throws SQLException if an error occurs.
      */
