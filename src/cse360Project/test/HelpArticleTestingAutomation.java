@@ -80,7 +80,7 @@ public class HelpArticleTestingAutomation {
         /**
          * Testing title equality.
          */
-        assertEqual("Title equality", testHelpArticle.getTitle(), testTitle);
+        assertEqual("Title equality", testHelpArticle.getTitle(), new String(testTitle));
 
         /**
          * Testing authors equality.
@@ -122,7 +122,7 @@ public class HelpArticleTestingAutomation {
          */
         char[] testTitle2 = "Advanced Java Concepts".toCharArray();
         testHelpArticle.setTitle(testTitle2);
-        assertEqual("Title equality after setter", testHelpArticle.getTitle(), testTitle2);
+        assertEqual("Title equality after setter", testHelpArticle.getTitle(), new String(testTitle2));
 
         /**
          * Testing authors equality after setter.

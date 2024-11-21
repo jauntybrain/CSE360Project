@@ -6,8 +6,11 @@ import java.util.Arrays;
 import java.util.UUID;
 
 import cse360Project.models.HelpArticle;
+import cse360Project.models.Role;
 import cse360Project.models.Topic;
+import cse360Project.models.User;
 import cse360Project.services.HelpArticleService;
+import cse360Project.services.UserService;
 
 /*******
  * <p>
@@ -80,6 +83,9 @@ public class HelpArticleServiceTestingAutomation {
 			HelpArticleService testService = new HelpArticleService();
 			final boolean cleanDBResult = testService.cleanDB();
 			assertTrue("Clean DB", cleanDBResult);
+			UserService testUserService = UserService.getInstance();
+			testUserService.setCurrentUser(new User(null, "username", UserService.hashPassword("password")));
+			testUserService.setCurrentRole(Role.STUDENT);
 
 			/**
 			 * Testing that initially there is 0 articles.

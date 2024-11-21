@@ -116,8 +116,8 @@ public class UserServiceTestingAutomation {
         /**
         * Testing the name validator.
         */
-        String oneTimePassword = testInstance.setOneTimePassword(testUsername);
-        assertTrue("One Time Password", testInstance.verifyOneTimePassword(testUsername, oneTimePassword));
+        String oneTimePassword = testInstance.setOneTimePassword(testUser.getUuid());
+        assertTrue("One Time Password", testInstance.verifyOneTimePassword(testUser.getUuid(), oneTimePassword));
 
         
         /**
@@ -130,7 +130,7 @@ public class UserServiceTestingAutomation {
         /**
         * Testing deleting a user.
         */
-        final boolean deleteUserResult = testInstance.deleteUser(testUsername);
+        final boolean deleteUserResult = testInstance.deleteUser(testUser.getUuid());
         assertTrue("Delete User", deleteUserResult);
         assertEqual("Delete User", testInstance.getAllUsers().size(), 0);
 

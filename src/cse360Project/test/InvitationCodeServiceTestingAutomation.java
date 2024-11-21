@@ -60,7 +60,8 @@ public class InvitationCodeServiceTestingAutomation {
         /**
         * Testing roles equality.
         */
-        testInstance.addInvitationCode(testCode, testRoles);
+        boolean result = testInstance.addInvitationCode(testCode, testRoles);
+        assertTrue("Code successfully created", result);
         assertEqual("Roles equality", testInstance.getRolesForInvitationCode(testCode), testRoles);
 
         /**
