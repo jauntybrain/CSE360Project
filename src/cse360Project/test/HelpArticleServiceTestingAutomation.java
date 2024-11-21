@@ -6,9 +6,7 @@ import java.util.Arrays;
 import java.util.UUID;
 
 import cse360Project.models.HelpArticle;
-import cse360Project.models.Role;
 import cse360Project.models.Topic;
-import cse360Project.models.User;
 import cse360Project.services.HelpArticleService;
 
 /*******
@@ -67,7 +65,7 @@ public class HelpArticleServiceTestingAutomation {
 		char[][] testKeywords = { "key1".toCharArray(), "key2".toCharArray(), "key3".toCharArray() };
 		char[] testBody = "body".toCharArray();
 		char[][] testReferences = { "ref1".toCharArray(), "ref2".toCharArray(), "ref3".toCharArray() };
-		List<String> testGroups = Arrays.asList("group1", "group2", "group3");
+		List<Integer> testGroups = Arrays.asList(1, 2, 3);
 		Topic testLevel = Topic.ADVANCED;
 
 		/**
@@ -120,7 +118,7 @@ public class HelpArticleServiceTestingAutomation {
 			/**
 			 * Testing back up and restore.
 			 */
-			testService.backupArticles("articlesBackup.bak", Collections.emptySet());
+			testService.backupArticles("articlesBackup.bak", Collections.emptyList());
 			testService.restoreArticles("articlesBackup.bak", false);
 			assertEqual("Back up and restore", testService.getAllArticles().size(), 1);
 

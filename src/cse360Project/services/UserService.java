@@ -40,6 +40,7 @@ public class UserService {
 
     private Map<String, User> users = new HashMap<>(); // uuid -> user
     private User currentUser;
+    private Role currentRole;
     private String currentInvitationCode;
 
     /**
@@ -50,6 +51,7 @@ public class UserService {
             invitationCodeService = InvitationCodeService.getInstance();
             databaseService = DatabaseService.getInstance();
             currentUser = null;
+            currentRole = null;
             currentInvitationCode = null;
             loadUsersFromDB();
         } catch (SQLException e) {
@@ -229,7 +231,8 @@ public class UserService {
             }
 
             // Load roles
-            loadUserRoles(user);
+            final List<Role> roles = loadUserRoles(user);
+            user.setRoles(roles);
             // Load topics
             loadUserTopics(user);
 
@@ -243,12 +246,14 @@ public class UserService {
      * @param user The user to load the roles for.
      * @throws SQLException if an error occurs while loading the roles.
      */
-    private void loadUserRoles(User user) throws SQLException {
+    public List<Role> loadUserRoles(User user) throws SQLException {
         String sql = "SELECT role FROM user_roles WHERE user_id = ?";
         ResultSet rs = databaseService.executeQuery(sql, user.getUuid());
+        List<Role> roles = new ArrayList<>();
         while (rs.next()) {
-            user.getRoles().add(Role.valueOf(rs.getString("role")));
+            roles.add(Role.valueOf(rs.getString("role")));
         }
+        return roles;
     }
 
     /**
@@ -295,12 +300,30 @@ public class UserService {
     }
 
     /**
+     * Returns the current role.
+     * 
+     * @return The current role.
+     */
+    public Role getCurrentRole() {
+        return currentRole;
+    }
+
+    /**
      * Sets the current user.
      * 
      * @param user The user to set as the current user.
      */
     public void setCurrentUser(User user) {
         this.currentUser = user;
+    }
+
+    /**
+     * Sets the current role.
+     * 
+     * @param role The role to set as the current role.
+     */
+    public void setCurrentRole(Role role) {
+        this.currentRole = role;
     }
 
     /**
@@ -437,7 +460,7 @@ public class UserService {
      * @param username The username of the user to return.
      * @return The user with the given username, or null if no such user exists.
      */
-    private User getUserByUsername(String username) {
+    public User getUserByUsername(String username) {
         return users.values().stream()
                 .filter(user -> user.getUsername().equals(username))
                 .findFirst()
@@ -630,20 +653,7 @@ public class UserService {
      */
     public boolean verifyOneTimePassword(String uuid, String oneTimePassword) {
         User user = users.get(uuid);
-        System.out.println("User found? " + (user != null));
-        System.out.println("User has one-time password? " + user.getHasOneTimePassword());
         if (user != null && user.getHasOneTimePassword()) {
-            System.out.println("One-time password expires: " + user.getOneTimePasswordExpires());
-            System.out.println("Current time: " + LocalDateTime.now());
-            System.out.println("One-time password is valid: "
-                    + LocalDateTime.now().isBefore(user.getOneTimePasswordExpires()));
-            try {
-                System.out.println("Comparing: " + hashPassword(oneTimePassword).toString() + " and "
-                        + user.getPassword());
-            } catch (NoSuchAlgorithmException e) {
-                System.out.println("Error hashing password: " + e.getMessage());
-                return false;
-            }
             if (LocalDateTime.now().isBefore(user.getOneTimePasswordExpires())) {
                 try {
                     return validatePassword(oneTimePassword, user.getPassword());

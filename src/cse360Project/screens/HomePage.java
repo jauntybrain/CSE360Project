@@ -62,12 +62,17 @@ public class HomePage extends Application {
             Button selectRoleButton = new Button("Select Role");
             selectRoleButton.setOnAction(e -> {
                 Role selectedRole = roleComboBox.getValue();
+                userService.setCurrentRole(selectedRole);
                 if (selectedRole == Role.ADMIN) {
                     primaryStage.close();
                     new AdminHomePage().start(new Stage());
                 } else if (selectedRole == Role.INSTRUCTOR) {
                     primaryStage.close();
                     new InstructorHomePage().start(new Stage());
+                } else if (selectedRole == Role.STUDENT) {
+                    primaryStage.close();
+                    new StudentHomePage().start(new Stage());
+                    return;
                 } else {
                     vbox.getChildren().clear();
                     Label selectedRoleLabel = new Label("Welcome! Your current role: " + selectedRole);
@@ -80,13 +85,18 @@ public class HomePage extends Application {
         } else {
             // If the user has only one role, navigate to the corresponding home page
             Role singleRole = currentUser.getRoles().get(0);
+            userService.setCurrentRole(singleRole);
             if (singleRole == Role.ADMIN) {
                 primaryStage.close();
                 new AdminHomePage().start(new Stage());
                 return;
             } else if (singleRole == Role.INSTRUCTOR) {
                 primaryStage.close();
-             	new InstructorHomePage().start(new Stage());
+                new InstructorHomePage().start(new Stage());
+                return;
+            } else if (singleRole == Role.STUDENT) {
+                primaryStage.close();
+                new StudentHomePage().start(new Stage());
                 return;
             } else {
                 Label roleLabel = new Label("Welcome! Your current role: " + singleRole);

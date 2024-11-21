@@ -13,7 +13,9 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import cse360Project.models.ArticleGroup;
 import cse360Project.models.HelpArticle;
+import cse360Project.models.Role;
 import cse360Project.models.Topic;
 import cse360Project.services.*;
 import javafx.application.Platform;
@@ -27,6 +29,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /*******
  * <p>
@@ -52,13 +55,20 @@ public class HelpArticlesPage extends Application {
 
     private List<HelpArticle> articles;
     private Set<String> selectedGroups = new HashSet<>();
-    private List<String> allGroups = new ArrayList<>();
+    private List<ArticleGroup> allGroups = new ArrayList<>();
 
     private Button backupButton;
     private VBox rootNode;
     private Button groupFilterButton;
+    private Button levelFilterButton;
 
     private boolean isUpdatingGroups = false;
+
+    private Set<Topic> selectedLevels = new HashSet<>();
+
+    private TextField searchField;
+
+    private List<String> searchHistory = new ArrayList<>();
 
     /**
      * Gets the root node.
@@ -89,25 +99,53 @@ public class HelpArticlesPage extends Application {
             primaryStage.close();
         });
 
-        Button createButton = new Button("Create Article");
-        createButton.setOnAction(e -> showModifyArticleDialog(null));
+        Role currentRole = userService.getCurrentRole();
 
-        backupButton = new Button("Backup Articles");
-        backupButton.setOnAction(e -> backupArticles());
+        HBox buttonsRow = new HBox(10);
+        if (currentRole != Role.STUDENT) {
+            Button createButton = new Button("Create Article");
+            createButton.setOnAction(e -> showModifyArticleDialog(null));
 
-        Button restoreButton = new Button("Restore Articles");
-        restoreButton.setOnAction(e -> restoreArticles());
+            backupButton = new Button("Backup Articles");
+            backupButton.setOnAction(e -> backupArticles());
+
+            Button restoreButton = new Button("Restore Articles");
+            restoreButton.setOnAction(e -> restoreArticles());
+
+            buttonsRow.getChildren().addAll(createButton, backupButton, restoreButton);
+        }
+
+        if (currentRole == Role.STUDENT) {
+            Button helpRequestButton = new Button("Send Help Request");
+            helpRequestButton.setOnAction(e -> showHelpRequestDialog());
+            buttonsRow.getChildren().add(helpRequestButton);
+        }
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox buttonsRow = new HBox(10, createButton, backupButton, restoreButton, spacer, logoutButton);
+        buttonsRow.getChildren().addAll(spacer, logoutButton);
 
         groupFilterButton = new Button("Filter by Groups");
         groupFilterButton.setOnAction(e -> showGroupFilterDialog());
 
-        HBox filterRow = new HBox(10, new Label("Filter:"), groupFilterButton);
+        levelFilterButton = new Button("Filter by Level");
+        levelFilterButton.setOnAction(e -> showLevelFilterDialog());
 
-        rootNode = new VBox(10, filterRow, tableView, buttonsRow);
+        HBox filterRow = new HBox(10, new Label("Filter:"), groupFilterButton, levelFilterButton);
+
+        searchField = new TextField();
+        searchField.setPromptText("Search by title, author, abstract or ID...");
+        searchField.setPrefWidth(300);
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (!newValue.trim().isEmpty()) {
+                searchHistory.add(newValue.trim());
+            }
+            loadArticles();
+        });
+
+        HBox searchRow = new HBox(10, new Label("Search:"), searchField);
+
+        rootNode = new VBox(10, searchRow, filterRow, tableView, buttonsRow);
         rootNode.setPadding(new Insets(10));
 
         Scene scene = new Scene(rootNode, 900, 450);
@@ -116,6 +154,8 @@ public class HelpArticlesPage extends Application {
         primaryStage.show();
 
         loadArticles();
+
+        EventService.getInstance().addGroupUpdateListener(this::loadArticles);
     }
 
     /**
@@ -172,7 +212,40 @@ public class HelpArticlesPage extends Application {
                 if (empty) {
                     setGraphic(null);
                 } else {
-                    HBox buttons = new HBox(10, viewButton, editButton, deleteButton);
+                    HelpArticleRow data = getTableView().getItems().get(getIndex());
+                    HBox buttons = new HBox(10);
+
+                    // Get current user role
+                    Role currentRole = userService.getCurrentRole();
+
+                    // Get article groups and check admin status
+                    List<Integer> articleGroupIds = articles.stream()
+                            .filter(a -> a.getUuid().equals(data.getId()))
+                            .findFirst()
+                            .map(HelpArticle::getGroups)
+                            .orElse(new ArrayList<>());
+
+                    boolean isGroupAdmin = false;
+                    try {
+                        isGroupAdmin = articleGroupIds.stream()
+                                .anyMatch(groupId -> allGroups.stream()
+                                        .filter(g -> g.getId() == groupId)
+                                        .findFirst()
+                                        .map(ArticleGroup::isAdmin)
+                                        .orElse(false));
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
+                    // Configure buttons based on role and group admin status
+                    if (currentRole == Role.INSTRUCTOR && isGroupAdmin) {
+                        buttons.getChildren().addAll(viewButton, editButton, deleteButton);
+                    } else if (currentRole == Role.ADMIN) {
+                        buttons.getChildren().addAll(deleteButton);
+                    } else if (currentRole == Role.STUDENT) {
+                        buttons.getChildren().add(viewButton);
+                    }
+
                     setGraphic(buttons);
                 }
             }
@@ -187,31 +260,80 @@ public class HelpArticlesPage extends Application {
      */
     private void loadArticles() {
         try {
+            // Get articles based on group filter
+            List<HelpArticle> filteredArticles;
             if (selectedGroups.isEmpty()) {
-                articles = helpArticleService.getAllArticles();
+                filteredArticles = helpArticleService.getAllArticles();
             } else {
-                articles = helpArticleService.getArticlesByGroups(new ArrayList<>(selectedGroups));
+                filteredArticles = helpArticleService.getArticlesByGroups(
+                        selectedGroups.stream().map(Integer::parseInt).collect(Collectors.toList()));
             }
 
-            ObservableList<HelpArticleRow> data = FXCollections.observableArrayList();
-            int sequence = 1;
-            for (HelpArticle article : articles) {
-                String title = new String(article.getTitle()).trim();
-                String abstractText = new String(article.getAbstractText());
-                String authors = article.getAuthorsString();
-                String groups = article.getGroupsString();
-                data.add(new HelpArticleRow(article.getUuid(), sequence++, title, abstractText, authors, groups));
+            // Apply level filter
+            if (!selectedLevels.isEmpty()) {
+                filteredArticles = filteredArticles.stream()
+                        .filter(article -> selectedLevels.contains(article.getLevel()))
+                        .collect(Collectors.toList());
             }
 
-            tableView.setItems(data);
-            backupButton.setDisable(articles.isEmpty());
+            // Apply search filter if search text exists
+            String searchText = searchField.getText().trim().toLowerCase();
+            if (!searchText.isEmpty()) {
+                filteredArticles = filteredArticles.stream()
+                        .filter(article -> {
+                            // Check UUID
+                            if (article.getUuid().equals(searchText)) {
+                                return true;
+                            }
+                            // Check title
+                            if (article.getTitle().toLowerCase().contains(searchText)) {
+                                return true;
+                            }
+                            // Check abstract
+                            if (new String(article.getAbstractText()).toLowerCase().contains(searchText)) {
+                                return true;
+                            }
+                            // Check authors
+                            String authors = Arrays.stream(article.getAuthors())
+                                    .map(String::new)
+                                    .collect(Collectors.joining(" "))
+                                    .toLowerCase();
+                            return authors.contains(searchText);
+                        })
+                        .collect(Collectors.toList());
+            }
+
+            articles = filteredArticles;
+
+            updateTableArticles();
 
             // Update groups list if not already updating
             if (!isUpdatingGroups) {
                 Platform.runLater(this::updateGroupsList);
             }
         } catch (Exception e) {
+            System.out.println("Error loading articles: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    private void updateTableArticles() {
+        ObservableList<HelpArticleRow> data = FXCollections.observableArrayList();
+        int sequence = 1;
+        for (HelpArticle article : articles) {
+            String title = article.getTitle().trim();
+            String abstractText = new String(article.getAbstractText());
+            String authors = article.getAuthorsString();
+            String groups = allGroups.stream()
+                    .filter(group -> article.getGroups().contains(group.getId()))
+                    .map(ArticleGroup::getName)
+                    .collect(Collectors.joining(", "));
+            data.add(new HelpArticleRow(article.getUuid(), sequence++, title, abstractText, authors, groups));
+        }
+
+        tableView.setItems(data);
+        if (backupButton != null) {
+            backupButton.setDisable(articles.isEmpty());
         }
     }
 
@@ -232,7 +354,7 @@ public class HelpArticlesPage extends Application {
         TextField titleField = new TextField();
         titleField.setPromptText("Title");
         if (alreadyExists) {
-            titleField.setText(new String(existingArticle.getTitle()).trim());
+            titleField.setText(existingArticle.getTitle().trim());
         }
 
         TextField authorsField = new TextField();
@@ -265,10 +387,36 @@ public class HelpArticlesPage extends Application {
             referencesField.setText(existingArticle.getReferencesString());
         }
 
-        TextField groupsField = new TextField();
-        groupsField.setPromptText("Groups (comma-separated)");
-        if (alreadyExists) {
-            groupsField.setText(existingArticle.getGroupsString());
+        // Replace the groupsField TextField with a VBox of checkboxes
+        VBox groupsContainer = new VBox(5);
+        groupsContainer.setPadding(new Insets(5));
+        Map<String, CheckBox> groupCheckboxes = new HashMap<>();
+
+        // Create a ScrollPane for groups
+        ScrollPane groupsScrollPane = new ScrollPane(groupsContainer);
+        groupsScrollPane.setFitToWidth(true);
+        groupsScrollPane.setPrefHeight(100);
+        groupsScrollPane.setStyle("-fx-background-color: white;");
+
+        // Add checkboxes or message for groups
+        if (allGroups.isEmpty()) {
+            Label noGroupsLabel = new Label("No groups exist. You can create groups as Instructor.");
+            noGroupsLabel.setWrapText(true);
+            noGroupsLabel.setStyle("-fx-text-fill: gray; -fx-font-style: italic;");
+            groupsContainer.getChildren().add(noGroupsLabel);
+        } else {
+            for (ArticleGroup group : allGroups) {
+                CheckBox cb = new CheckBox(group.getName() + (group.isProtected() ? " (Protected)" : ""));
+                cb.setUserData(group.getName());
+
+                // If editing existing article, check the boxes for its groups
+                if (alreadyExists) {
+                    cb.setSelected(existingArticle.getGroups().contains(group.getId()));
+                }
+
+                groupCheckboxes.put(String.valueOf(group.getId()), cb);
+                groupsContainer.getChildren().add(cb);
+            }
         }
 
         ComboBox<Topic> levelComboBox = new ComboBox<>();
@@ -290,22 +438,20 @@ public class HelpArticlesPage extends Application {
                 new Label("Keywords:"), keywordsField,
                 new Label("Body:"), bodyField,
                 new Label("References:"), referencesField,
-                new Label("Groups:"), groupsField,
+                new Label("Groups:"), groupsScrollPane,
                 new Label("Level:"), levelComboBox,
                 errorLabel);
 
         dialog.getDialogPane().setContent(vbox);
 
         Node createButton = dialog.getDialogPane().lookupButton(createButtonType);
-        createButton.addEventFilter(ActionEvent.ACTION, event -> {
+        createButton.addEventFilter(ActionEvent.ACTION, (ActionEvent event) -> {
             String title = titleField.getText().trim();
             String authorsText = authorsField.getText().trim();
             String abstractText = abstractField.getText().trim();
             String keywordsText = keywordsField.getText().trim();
             String bodyText = bodyField.getText().trim();
             String referencesText = referencesField.getText().trim();
-            String groupsText = groupsField.getText().trim();
-            Topic level = levelComboBox.getValue();
 
             StringBuilder validationMessage = new StringBuilder();
             if (title.isEmpty())
@@ -320,10 +466,11 @@ public class HelpArticlesPage extends Application {
                 validationMessage.append("- Body is required\n");
             if (referencesText.isEmpty())
                 validationMessage.append("- References are required\n");
-            if (groupsText.isEmpty())
-                validationMessage.append("- Groups are required\n");
-            if (level == null)
-                validationMessage.append("- Level is required\n");
+
+            // Replace the groups validation and processing
+            if (groupCheckboxes.values().stream().noneMatch(CheckBox::isSelected)) {
+                validationMessage.append("- At least one group must be selected\n");
+            }
 
             if (validationMessage.length() > 0) {
                 errorLabel.setText(validationMessage.toString());
@@ -348,14 +495,10 @@ public class HelpArticlesPage extends Application {
                     references[i] = referencesArray[i].trim().toCharArray();
                 }
 
-                String[] groupsArray = groupsText.replaceAll("\\s+", "").split(",");
-                List<String> groups = Arrays.asList(groupsArray);
-
-                for (String group : groupsArray) {
-                    System.out.println("Group: " + group);
-                }
-
-                System.out.println("Groups: " + groups);
+                List<Integer> groups = groupCheckboxes.entrySet().stream()
+                        .filter(entry -> entry.getValue().isSelected())
+                        .map(entry -> Integer.parseInt(entry.getKey()))
+                        .collect(Collectors.toList());
 
                 HelpArticle article = new HelpArticle(alreadyExists ? existingArticle.getUuid() : null,
                         title.toCharArray(),
@@ -365,7 +508,7 @@ public class HelpArticlesPage extends Application {
                         bodyText.toCharArray(),
                         references,
                         groups,
-                        level);
+                        levelComboBox.getValue());
 
                 try {
                     helpArticleService.modifyArticle(article, alreadyExists);
@@ -418,15 +561,44 @@ public class HelpArticlesPage extends Application {
                 VBox content = new VBox(10);
                 content.setPadding(new Insets(10));
 
+                // Create TextFields for selectable text
+                TextField idField = new TextField(article.getUuid());
+                idField.setEditable(false);
+
+                TextField titleField = new TextField(article.getTitle().trim());
+                titleField.setEditable(false);
+
+                TextField authorsField = new TextField(article.getAuthorsString());
+                authorsField.setEditable(false);
+
+                TextField abstractField = new TextField(new String(article.getAbstractText()).trim());
+                abstractField.setEditable(false);
+
+                TextField keywordsField = new TextField(article.getKeywordsString());
+                keywordsField.setEditable(false);
+
+                TextField bodyField = new TextField(new String(article.getBody()).trim());
+                bodyField.setEditable(false);
+
+                TextField referencesField = new TextField(article.getReferencesString());
+                referencesField.setEditable(false);
+
+                TextField groupsField = new TextField(article.getGroupsString());
+                groupsField.setEditable(false);
+
+                TextField levelField = new TextField(article.getLevel().name());
+                levelField.setEditable(false);
+
                 content.getChildren().addAll(
-                        new Label("Title: " + new String(article.getTitle()).trim()),
-                        new Label("Authors: " + article.getAuthorsString()),
-                        new Label("Abstract: " + new String(article.getAbstractText()).trim()),
-                        new Label("Keywords: " + article.getKeywordsString()),
-                        new Label("Body: " + new String(article.getBody()).trim()),
-                        new Label("References: " + article.getReferencesString()),
-                        new Label("Groups: " + article.getGroupsString()),
-                        new Label("Level: " + article.getLevel().name()));
+                        new Label("ID:"), idField,
+                        new Label("Title:"), titleField,
+                        new Label("Authors:"), authorsField,
+                        new Label("Abstract:"), abstractField,
+                        new Label("Keywords:"), keywordsField,
+                        new Label("Body:"), bodyField,
+                        new Label("References:"), referencesField,
+                        new Label("Groups:"), groupsField,
+                        new Label("Level:"), levelField);
 
                 dialog.getDialogPane().setContent(content);
                 dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
@@ -463,10 +635,10 @@ public class HelpArticlesPage extends Application {
         checkboxContainer.getChildren().add(new Separator());
 
         // Add other group checkboxes
-        for (String group : allGroups) {
-            CheckBox cb = new CheckBox(group);
+        for (ArticleGroup group : allGroups) {
+            CheckBox cb = new CheckBox(group.getName());
             cb.setDisable(true); // Initially disabled since "All Groups" is selected
-            checkboxes.put(group, cb);
+            checkboxes.put(group.getName(), cb);
             checkboxContainer.getChildren().add(cb);
         }
 
@@ -509,7 +681,8 @@ public class HelpArticlesPage extends Application {
             if (file != null) {
                 try {
                     Set<String> selectedGroups = result.get();
-                    helpArticleService.backupArticles(file.getAbsolutePath(), selectedGroups);
+                    helpArticleService.backupArticles(file.getAbsolutePath(),
+                            selectedGroups.stream().map(Integer::parseInt).collect(Collectors.toList()));
 
                     Alert alert = new Alert(Alert.AlertType.INFORMATION);
                     alert.setTitle("Backup Successful");
@@ -592,10 +765,10 @@ public class HelpArticlesPage extends Application {
 
         checkboxContainer.getChildren().add(new Separator());
 
-        for (String group : allGroups) {
-            CheckBox cb = new CheckBox(group);
-            cb.setSelected(selectedGroups.contains(group));
-            checkboxes.put(group, cb);
+        for (ArticleGroup group : allGroups) {
+            CheckBox cb = new CheckBox(group.getName());
+            cb.setSelected(selectedGroups.contains(group.getName()));
+            checkboxes.put(group.getName(), cb);
             checkboxContainer.getChildren().add(cb);
         }
 
@@ -672,7 +845,7 @@ public class HelpArticlesPage extends Application {
                 groupFilterButton.setDisable(false);
 
                 Set<String> validGroups = new HashSet<>(selectedGroups);
-                validGroups.retainAll(allGroups);
+                validGroups.retainAll(allGroups.stream().map(ArticleGroup::getName).collect(Collectors.toList()));
                 selectedGroups = validGroups;
 
                 if (selectedGroups.isEmpty()) {
@@ -684,6 +857,8 @@ public class HelpArticlesPage extends Application {
                 updateGroupFilterButtonText();
             }
 
+            updateTableArticles();
+
         } catch (Exception e) {
             e.printStackTrace();
             groupFilterButton.setDisable(true);
@@ -691,6 +866,86 @@ public class HelpArticlesPage extends Application {
             updateGroupFilterButtonText();
         } finally {
             isUpdatingGroups = false;
+        }
+    }
+
+    /**
+     * Shows the level filter dialog.
+     */
+    private void showLevelFilterDialog() {
+        Dialog<Set<Topic>> dialog = new Dialog<>();
+        dialog.setTitle("Filter by Level");
+        dialog.setHeaderText("Select levels to filter by");
+
+        VBox checkboxContainer = new VBox(5);
+        Map<Topic, CheckBox> checkboxes = new HashMap<>();
+
+        // Add "All Levels" checkbox
+        CheckBox allLevelsCheckbox = new CheckBox("All Levels");
+        allLevelsCheckbox.setSelected(selectedLevels.isEmpty());
+        checkboxContainer.getChildren().add(allLevelsCheckbox);
+
+        checkboxContainer.getChildren().add(new Separator());
+
+        // Add checkboxes for each level
+        for (Topic level : Topic.values()) {
+            CheckBox cb = new CheckBox(level.name());
+            cb.setSelected(selectedLevels.contains(level));
+            checkboxes.put(level, cb);
+            checkboxContainer.getChildren().add(cb);
+        }
+
+        // Handle "All Levels" checkbox logic
+        allLevelsCheckbox.setOnAction(e -> {
+            if (allLevelsCheckbox.isSelected()) {
+                checkboxes.values().forEach(cb -> {
+                    cb.setSelected(false);
+                    cb.setDisable(true);
+                });
+            } else {
+                checkboxes.values().forEach(cb -> cb.setDisable(false));
+            }
+        });
+
+        checkboxes.values().forEach(cb -> {
+            cb.setOnAction(e -> {
+                boolean anySelected = checkboxes.values().stream().anyMatch(CheckBox::isSelected);
+                allLevelsCheckbox.setSelected(!anySelected);
+                allLevelsCheckbox.setDisable(anySelected);
+            });
+        });
+
+        dialog.getDialogPane().setContent(checkboxContainer);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == ButtonType.OK) {
+                if (allLevelsCheckbox.isSelected()) {
+                    return new HashSet<>();
+                }
+                return checkboxes.entrySet().stream()
+                        .filter(entry -> entry.getValue().isSelected())
+                        .map(Map.Entry::getKey)
+                        .collect(Collectors.toSet());
+            }
+            return null;
+        });
+
+        dialog.showAndWait().ifPresent(result -> {
+            selectedLevels = result;
+            updateLevelFilterButtonText();
+            loadArticles();
+        });
+    }
+
+    /**
+     * Updates the level filter button text.
+     */
+    private void updateLevelFilterButtonText() {
+        if (selectedLevels.isEmpty()) {
+            levelFilterButton.setText("Filter by Level (All)");
+        } else {
+            levelFilterButton.setText(String.format("Filter by Level (%d selected)", selectedLevels.size()));
         }
     }
 
@@ -798,5 +1053,37 @@ public class HelpArticlesPage extends Application {
         public String getGroups() {
             return groups.get();
         }
+    }
+
+    private void showHelpRequestDialog() {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Send Help Request");
+
+        TextArea messageField = new TextArea();
+        messageField.setPromptText("Describe your issue or what you couldn't find...");
+
+        VBox content = new VBox(10, new Label("Message:"), messageField);
+        content.setPadding(new Insets(10));
+        dialog.getDialogPane().setContent(content);
+
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == ButtonType.OK) {
+                String message = messageField.getText().trim();
+                if (!message.isEmpty()) {
+                    try {
+                        String searchHistoryString = String.join(", ", searchHistory);
+                        helpArticleService.sendHelpRequest(userService.getCurrentUser().getUuid(), message,
+                                searchHistoryString);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            return null;
+        });
+
+        dialog.showAndWait();
     }
 }

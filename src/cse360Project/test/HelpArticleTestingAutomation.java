@@ -63,7 +63,7 @@ public class HelpArticleTestingAutomation {
         char[][] testKeywords = { "key1".toCharArray(), "key2".toCharArray(), "key3".toCharArray() };
         char[] testBody = "body".toCharArray();
         char[][] testReferences = { "ref1".toCharArray(), "ref2".toCharArray(), "ref3".toCharArray() };
-        List<String> testGroups = Arrays.asList("group1", "group2", "group3");
+        List<Integer> testGroups = Arrays.asList(1, 2, 3);
         Topic testLevel = Topic.ADVANCED;
 
         /**
@@ -162,7 +162,7 @@ public class HelpArticleTestingAutomation {
         /**
          * Testing groups equality after setter.
          */
-        List<String> testGroups2 = Arrays.asList("group2", "group3", "group4");
+        List<Integer> testGroups2 = Arrays.asList(2, 3, 4);
         testHelpArticle.setGroups(testGroups2);
         assertEqual("Groups equality after setter", testHelpArticle.getGroups(), testGroups2);
 

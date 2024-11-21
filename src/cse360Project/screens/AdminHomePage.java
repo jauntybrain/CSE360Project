@@ -5,7 +5,6 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -119,16 +118,30 @@ public class AdminHomePage extends Application {
         // Load content from HelpArticlesPage
         HelpArticlesPage helpArticlesPage = new HelpArticlesPage();
         try {
-			helpArticlesPage.start(primaryStage);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+            helpArticlesPage.start(primaryStage);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         // Add the HelpArticlesPage's root node to the tab
         helpTab.setContent(helpArticlesPage.getRootNode());
 
+        Tab articleGroupsTab = new Tab("Article Groups");
+        articleGroupsTab.setClosable(false);
+
+        // Load content from ArticleGroupsPage
+        ArticleGroupsPage articleGroupsPage = new ArticleGroupsPage();
+        try {
+            articleGroupsPage.start(primaryStage);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // Add the ArticleGroupsPage's root node to the tab
+        articleGroupsTab.setContent(articleGroupsPage.getRootNode());
+
         // Add tabs to the TabPane
-        tabPane.getTabs().addAll(adminTab, helpTab);
+        tabPane.getTabs().addAll(adminTab, helpTab, articleGroupsTab);
 
         // Set the scene with the TabPane
         Scene scene = new Scene(tabPane, 900, 450);

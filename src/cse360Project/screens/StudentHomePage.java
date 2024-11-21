@@ -8,11 +8,11 @@ import javafx.stage.Stage;
 
 /*******
  * <p>
- * InstructorHomePage Class.
+ * StudentHomePage Class.
  * </p>
  * 
  * <p>
- * Description: Displays the instructor home page.
+ * Description: Displays the student home page.
  * </p>
  * 
  * <p>
@@ -22,11 +22,11 @@ import javafx.stage.Stage;
  * @version 1.00 2024-10-30 Phase two
  * 
  */
-public class InstructorHomePage extends Application {
+public class StudentHomePage extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        primaryStage.setTitle("Instructor Home Page");
+        primaryStage.setTitle("Student Home Page");
 
         TabPane tabPane = new TabPane();
 
@@ -44,28 +44,13 @@ public class InstructorHomePage extends Application {
         helpTab.setContent(helpArticlesPage.getRootNode());
         tabPane.getTabs().add(helpTab);
 
-        Tab articleGroupsTab = new Tab("Article Groups");
-        articleGroupsTab.setClosable(false);
-
-        // Load content from ArticleGroupsPage
-        ArticleGroupsPage articleGroupsPage = new ArticleGroupsPage();
-        try {
-            articleGroupsPage.start(primaryStage);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        // Add the ArticleGroupsPage's root node to the tab
-        articleGroupsTab.setContent(articleGroupsPage.getRootNode());
-        tabPane.getTabs().add(articleGroupsTab);
-
         Scene scene = new Scene(tabPane, 900, 450);
         primaryStage.setScene(scene);
         primaryStage.show();
     }
 
     /**
-     * Launches the InstructorHomePage.
+     * Launches the StudentHomePage.
      * 
      * @param args The arguments.
      */

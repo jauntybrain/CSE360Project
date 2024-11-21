@@ -9,15 +9,19 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import cse360Project.services.encryption.*;
+import cse360Project.models.ArticleGroup;
 import cse360Project.models.HelpArticle;
+import cse360Project.models.Role;
 import cse360Project.models.Topic;
+import cse360Project.models.User;
+import cse360Project.screens.ArticleGroupsPage.UserListItem;
 
 /*******
  * <p>
@@ -39,6 +43,8 @@ import cse360Project.models.Topic;
 public class HelpArticleService {
     private EncryptionService encryptionService;
     private DatabaseService databaseService;
+    private UserService userService;
+    private static HelpArticleService instance;
 
     /**
      * Creates HelpArticleService and initializes EncryptionService.
@@ -48,6 +54,18 @@ public class HelpArticleService {
     public HelpArticleService() throws Exception {
         encryptionService = new EncryptionService();
         databaseService = DatabaseService.getInstance();
+        userService = UserService.getInstance();
+    }
+
+    public static HelpArticleService getInstance() {
+        if (instance == null) {
+            try {
+                instance = new HelpArticleService();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return instance;
     }
 
     /**
@@ -80,11 +98,12 @@ public class HelpArticleService {
                 encryptedTitle, encryptedAuthors, encryptedAbstract, encryptedKeywords, encryptedBody,
                 encryptedReferences, encryptedLevel, encodedIV, article.getUuid());
 
-        // delete and reinsert groups
-        databaseService.executeUpdate("DELETE FROM article_groups WHERE article_uuid = ?", article.getUuid());
-        for (String group : article.getGroups()) {
-            databaseService.executeUpdate("INSERT INTO article_groups (article_uuid, group_name) VALUES (?, ?)",
-                    article.getUuid(), group);
+        // create or update groups if needed
+        // delete, then insert
+        databaseService.executeUpdate("DELETE FROM article_group_articles WHERE article_id = ?", article.getUuid());
+        for (int group : article.getGroups()) {
+            databaseService.executeUpdate("INSERT INTO article_group_articles (group_id, article_id) VALUES (?, ?)",
+                    group, article.getUuid());
         }
     }
 
@@ -106,13 +125,22 @@ public class HelpArticleService {
      * @throws Exception if decryption or database error occurs.
      */
     public List<HelpArticle> getAllArticles() throws Exception {
-        String query = "SELECT * FROM articles";
+        String query = """
+                SELECT *
+                FROM articles a
+                JOIN article_group_articles aga ON a.uuid = aga.article_id
+                JOIN article_groups ag ON aga.group_id = ag.id
+                LEFT JOIN article_group_users agu ON ag.id = agu.group_id
+                WHERE (ag.is_protected = FALSE OR agu.user_id = ?)
+                AND (agu.user_id IS NULL OR agu.group_id = ag.id);
+                """;
+
         List<HelpArticle> articles = new ArrayList<>();
 
-        ResultSet rs = databaseService.executeQuery(query);
+        ResultSet rs = databaseService.executeQuery(query, userService.getCurrentUser().getUuid());
         while (rs.next()) {
             HelpArticle article = decryptArticle(rs);
-            List<String> groups = getArticleGroups(article.getUuid());
+            List<Integer> groups = getArticleGroupIds(article.getUuid());
             article.setGroups(groups);
             articles.add(article);
         }
@@ -127,7 +155,7 @@ public class HelpArticleService {
      * @param selectedGroups the groups to backup.
      * @throws Exception if I/O or encryption error occurs.
      */
-    public void backupArticles(String filename, Set<String> selectedGroups) throws Exception {
+    public void backupArticles(String filename, List<Integer> selectedGroups) throws Exception {
         List<HelpArticle> articlesToBackup;
 
         // Get articles to backup
@@ -149,7 +177,9 @@ public class HelpArticleService {
                 String encryptedKeywords = encryptField(charArraysToString(article.getKeywords()), iv);
                 String encryptedBody = encryptField(article.getBody(), iv);
                 String encryptedReferences = encryptField(charArraysToString(article.getReferences()), iv);
-                String encryptedGroups = encryptField(String.join(",", article.getGroups()), iv);
+                String encryptedGroups = encryptField(article.getGroups().stream()
+                        .map(String::valueOf)
+                        .collect(Collectors.joining(",")), iv);
                 String encryptedLevel = encryptField(article.getLevel().toString(), iv);
 
                 // Store encrypted data
@@ -178,7 +208,7 @@ public class HelpArticleService {
     public void restoreArticles(String filename, boolean merge) throws Exception {
         // Clear all articles if not merging
         if (!merge) {
-        cleanDB();
+            cleanDB();
         }
 
         try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filename))) {
@@ -217,7 +247,10 @@ public class HelpArticleService {
                     char[][] keywords = stringToCharArrays(decryptFieldToString(encryptedKeywords, iv));
                     char[] body = decryptFieldToString(encryptedBody, iv).toCharArray();
                     char[][] references = stringToCharArrays(decryptFieldToString(encryptedReferences, iv));
-                    List<String> groups = Arrays.asList(decryptFieldToString(encryptedGroups, iv).split(","));
+                    List<Integer> groups = Arrays.asList(decryptFieldToString(encryptedGroups, iv).split(","))
+                            .stream()
+                            .map(Integer::parseInt)
+                            .collect(Collectors.toList());
                     Topic level = Topic.valueOf(decryptFieldToString(encryptedLevel, iv));
 
                     // Create and insert article
@@ -237,29 +270,72 @@ public class HelpArticleService {
      * @return list of all groups.
      * @throws Exception if an error occurs.
      */
-    public List<String> getAllGroups() throws Exception {
-        Set<String> groups = new HashSet<>();
-        List<HelpArticle> articles = getAllArticles();
+    public List<ArticleGroup> getAllGroups() throws SQLException {
+        List<ArticleGroup> groups = new ArrayList<>();
 
-        for (HelpArticle article : articles) {
-            for (String group : article.getGroups()) {
-                groups.add(group);
-            }
+        String query = """
+                    SELECT ag.id, ag.name, agu.is_admin, ag.is_protected
+                    FROM article_groups ag
+                    JOIN article_group_users agu ON ag.id = agu.group_id
+                    WHERE ag.is_protected = FALSE OR agu.user_id = ?;
+                """;
+
+        ResultSet rs = databaseService.executeQuery(query, userService.getCurrentUser().getUuid());
+        while (rs.next()) {
+            groups.add(new ArticleGroup(rs.getInt("id"), rs.getString("name"), rs.getBoolean("is_protected"),
+                    rs.getBoolean("is_admin")));
         }
 
-        return new ArrayList<>(groups);
+        return groups;
     }
 
-    private List<String> getArticleGroups(String uuid) throws SQLException {
-        System.out.println("Getting article groups for UUID: " + uuid);
-        String query = "SELECT group_name FROM article_groups WHERE article_uuid = ?";
+    public List<Integer> getArticleGroupIds(String uuid) throws SQLException {
+        String query = """
+                SELECT ag.id
+                FROM article_groups ag
+                JOIN article_group_articles aga ON ag.id = aga.group_id
+                WHERE aga.article_id = ?;
+                """;
         ResultSet rs = databaseService.executeQuery(query, uuid);
-        List<String> groups = new ArrayList<>();
+        List<Integer> groups = new ArrayList<>();
         while (rs.next()) {
-            System.out.println("Group: " + rs.getString("group_name"));
-            groups.add(rs.getString("group_name"));
+            groups.add(rs.getInt("id"));
         }
         return groups;
+    }
+
+    public List<HelpArticle> getGroupArticles(int groupId) throws SQLException {
+        String query = "SELECT * FROM articles a JOIN article_group_articles aga ON a.uuid = aga.article_id WHERE aga.group_id = ?";
+        ResultSet rs = databaseService.executeQuery(query, groupId);
+        List<HelpArticle> articles = new ArrayList<>();
+        while (rs.next()) {
+            try {
+                HelpArticle article = decryptArticle(rs);
+                articles.add(article);
+            } catch (Exception e) {
+                System.err.println("Error decrypting article: " + e.getMessage());
+            }
+        }
+        return articles;
+    }
+
+    public HashMap<User, Boolean> getGroupUsers(int groupId) {
+        try {
+            String query = "SELECT u.uuid, u.username, agu.is_admin FROM users u JOIN article_group_users agu ON u.uuid = agu.user_id WHERE agu.group_id = ?";
+            ResultSet rs = databaseService.executeQuery(query, groupId);
+            HashMap<User, Boolean> users = new HashMap<>();
+            while (rs.next()) {
+                final User user = new User(rs.getString("uuid"), rs.getString("username"), null);
+                final List<Role> roles = userService.loadUserRoles(user);
+                user.setRoles(roles);
+                users.put(user, rs.getBoolean("is_admin"));
+            }
+            return users;
+        } catch (SQLException e) {
+            System.err.println("Error getting group users: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
     }
 
     /**
@@ -269,11 +345,11 @@ public class HelpArticleService {
      * @return list of articles.
      * @throws Exception if an error occurs.
      */
-    public List<HelpArticle> getArticlesByGroups(List<String> groups) throws Exception {
+    public List<HelpArticle> getArticlesByGroups(List<Integer> groups) throws Exception {
         List<HelpArticle> allArticles = getAllArticles();
         return allArticles.stream()
                 .filter(article -> {
-                    for (String articleGroup : article.getGroups()) {
+                    for (Integer articleGroup : article.getGroups()) {
                         if (groups.contains(articleGroup)) {
                             return true;
                         }
@@ -281,6 +357,93 @@ public class HelpArticleService {
                     return false;
                 })
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Modifies a group.
+     * 
+     * @param update   whether to update or create.
+     * @param group    the group to modify.
+     * @param articles list of articles.
+     * @param users    list of users.
+     * @throws SQLException if an error occurs.
+     */
+    public void modifyGroup(ArticleGroup group, List<String> articles, List<UserListItem> users) throws SQLException {
+        final boolean update = group.getId() != -1;
+        final User currentUser = userService.getCurrentUser();
+
+        // If updating, first delete existing relationships
+        if (update) {
+            databaseService.executeUpdate("DELETE FROM article_group_articles WHERE group_id = ?", group.getId());
+            databaseService.executeUpdate("DELETE FROM article_group_users WHERE group_id = ?", group.getId());
+
+            // Update group details
+            databaseService.executeUpdate(
+                    "UPDATE article_groups SET name = ?, is_protected = ? WHERE id = ?",
+                    group.getName(), group.isProtected(), group.getId());
+        } else {
+            // Insert new group
+            String insertSQL = "INSERT INTO article_groups (name, is_protected) VALUES (?, ?)";
+            try (PreparedStatement stmt = databaseService.getConnection().prepareStatement(insertSQL,
+                    Statement.RETURN_GENERATED_KEYS)) {
+                stmt.setString(1, group.getName());
+                stmt.setBoolean(2, group.isProtected());
+                stmt.executeUpdate();
+
+                // Get the generated ID
+                try (ResultSet rs = stmt.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        group.setId(rs.getInt(1));
+                    }
+                }
+            }
+        }
+
+        // Insert article relationships
+        if (articles != null && !articles.isEmpty()) {
+            for (String articleId : articles) {
+                databaseService.executeUpdate(
+                        "INSERT INTO article_group_articles (group_id, article_id) VALUES (?, ?)",
+                        group.getId(), articleId);
+            }
+        }
+
+        // Insert user relationships
+        if (users != null && !users.isEmpty()) {
+            // Add all users (including current user if present in the list)
+            for (UserListItem user : users) {
+                databaseService.executeUpdate(
+                        "INSERT INTO article_group_users (group_id, user_id, is_admin) VALUES (?, ?, ?)",
+                        group.getId(), userService.getUserByUsername(user.getUsername()).getUuid(),
+                        user.isAdmin());
+            }
+
+            // Add current user as admin if not in the list
+            boolean currentUserInList = users.stream()
+                    .anyMatch(u -> u.getUsername().equals(currentUser.getUsername()));
+            if (!currentUserInList) {
+                databaseService.executeUpdate(
+                        "INSERT INTO article_group_users (group_id, user_id, is_admin) VALUES (?, ?, true)",
+                        group.getId(), currentUser.getUuid());
+            }
+        } else {
+            // If no users specified, just add current user as admin
+            databaseService.executeUpdate(
+                    "INSERT INTO article_group_users (group_id, user_id, is_admin) VALUES (?, ?, true)",
+                    group.getId(), currentUser.getUuid());
+        }
+    }
+
+    /**
+     * Deletes a group from the database.
+     * 
+     * @param groupId the ID of the group to delete.
+     * @throws SQLException if an error occurs.
+     */
+    public void deleteGroup(int groupId) throws SQLException {
+        databaseService.executeUpdate("DELETE FROM article_groups WHERE id = ?", groupId);
+        databaseService.executeUpdate("DELETE FROM article_group_articles WHERE group_id = ?", groupId);
+        databaseService.executeUpdate("DELETE FROM article_group_users WHERE group_id = ?", groupId);
     }
 
     /**
@@ -403,5 +566,15 @@ public class HelpArticleService {
         } catch (SQLException e) {
             return false;
         }
+    }
+
+    // Add this method to send a help request
+    public void sendHelpRequest(String userId, String message, String searchHistory) throws SQLException {
+        System.out.println("INFO: Sending help request with message: " + message + " and search history: " + searchHistory);
+        String sql = """
+            INSERT INTO help_requests (user_id, message, search_history)
+            VALUES (?, ?, ?)
+        """;
+        databaseService.executeUpdate(sql, userId, message, searchHistory);
     }
 }

@@ -33,8 +33,8 @@ public class DatabaseService {
             createTables();
         } catch (ClassNotFoundException e) {
             throw new RuntimeException("Database driver not found", e);
-        } catch(SQLException e) {
-        	throw new RuntimeException("Could not create tables", e);
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not create tables", e);
         }
     }
 
@@ -46,9 +46,11 @@ public class DatabaseService {
     }
 
     private void createTables() throws SQLException {
-        createArticlesTable();
         createUsersTable();
+        createArticlesTable();
+        createArticleGroupsTable();
         createInvitationCodesTable();
+        createHelpRequestsTable();
     }
 
     private void createArticlesTable() throws SQLException {
@@ -70,20 +72,49 @@ public class DatabaseService {
                 )
                 """;
 
-        // Create article_groups table
-        String articleGroupsTable = """
+        try {
+            statement.execute(articleTable);
+        } finally {
+            statement.close();
+            connection.close();
+        }
+    }
+
+    private void createArticleGroupsTable() throws SQLException {
+        final Connection connection = getConnection();
+        final Statement statement = connection.createStatement();
+
+        String createArticleGroupsTable = """
                 CREATE TABLE IF NOT EXISTS article_groups (
                     id INT AUTO_INCREMENT PRIMARY KEY,
-                    article_uuid VARCHAR(36) NOT NULL,
-                    group_name VARCHAR(255) NOT NULL,
-                    FOREIGN KEY (article_uuid) REFERENCES articles(uuid)
-                    ON DELETE CASCADE
+                    name VARCHAR(255) NOT NULL,
+                    is_protected BOOLEAN NOT NULL DEFAULT FALSE
+                )
+                """;
+
+        String createArticleGroupArticlesTable = """
+                CREATE TABLE IF NOT EXISTS article_group_articles (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    group_id INT NOT NULL REFERENCES article_groups(id) ON DELETE CASCADE,
+                    article_id VARCHAR(36) NOT NULL REFERENCES articles(uuid) ON DELETE CASCADE,
+                    UNIQUE(article_id, group_id)
+                )
+                """;
+
+        String createArticleGroupUsersTable = """
+                CREATE TABLE IF NOT EXISTS article_group_users (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    group_id INT NOT NULL REFERENCES article_groups(id) ON DELETE CASCADE,
+                    user_id VARCHAR(36) NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+                    is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+                    UNIQUE(group_id, user_id)
                 )
                 """;
 
         try {
-            statement.execute(articleTable);
-            statement.execute(articleGroupsTable);
+            statement.execute(createArticleGroupsTable);
+            statement.execute(createArticleGroupArticlesTable);
+            statement.execute(createArticleGroupUsersTable);
         } finally {
             statement.close();
             connection.close();
@@ -171,6 +202,19 @@ public class DatabaseService {
             statement.close();
             connection.close();
         }
+    }
+
+    private void createHelpRequestsTable() throws SQLException {
+        String sql = """
+            CREATE TABLE IF NOT EXISTS help_requests (
+                id INTEGER PRIMARY KEY AUTO_INCREMENT,
+                user_id TEXT NOT NULL,
+                message TEXT NOT NULL,
+                search_history TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """;
+        executeUpdate(sql);
     }
 
     /**

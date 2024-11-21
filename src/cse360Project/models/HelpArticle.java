@@ -30,7 +30,7 @@ public class HelpArticle implements Serializable {
     private char[][] keywords;
     private char[] body;
     private char[][] references;
-    private List<String> groups;
+    private List<Integer> groups;
     private Topic level;
 
     /**
@@ -47,7 +47,7 @@ public class HelpArticle implements Serializable {
      * @param level        level of the article.
      */
     public HelpArticle(String uuid, char[] title, char[][] authors, char[] abstractText,
-            char[][] keywords, char[] body, char[][] references, List<String> groups, Topic level) {
+            char[][] keywords, char[] body, char[][] references, List<Integer> groups, Topic level) {
         this.uuid = uuid != null ? uuid : UUID.randomUUID().toString();
         this.title = title;
         this.authors = authors;
@@ -73,8 +73,8 @@ public class HelpArticle implements Serializable {
      * 
      * @return the title.
      */
-    public char[] getTitle() {
-        return title;
+    public String getTitle() {
+        return new String(title);
     }
 
     /**
@@ -177,11 +177,11 @@ public class HelpArticle implements Serializable {
     }
 
     /**
-     * Gets the groups of the article.
+     * Gets the group IDs of the article.
      * 
-     * @return the list of groups.
+     * @return the list of group IDs.
      */
-    public List<String> getGroups() {
+    public List<Integer> getGroups() {
         return groups;
     }
 
@@ -190,7 +190,7 @@ public class HelpArticle implements Serializable {
      * 
      * @param groups the list of groups to set.
      */
-    public void setGroups(List<String> groups) {
+    public void setGroups(List<Integer> groups) {
         this.groups = groups;
     }
 
@@ -227,7 +227,7 @@ public class HelpArticle implements Serializable {
      * @return groups as a string.
      */
     public String getGroupsString() {
-        return String.join(", ", getGroups());
+        return String.join(", ", getGroups().stream().map(Object::toString).toArray(String[]::new));
     }
 
     /**
