@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Arrays;
 import java.util.UUID;
 
+import cse360Project.models.ArticleGroup;
 import cse360Project.models.HelpArticle;
 import cse360Project.models.Role;
 import cse360Project.models.Topic;
@@ -57,35 +58,36 @@ public class HelpArticleServiceTestingAutomation {
 		System.out.println("____________________________________________________________________________");
 		System.out.println("\nHelp Article Service Class Automated Testing");
 
-		/**
-		 * Data that will be used for testing.
-		 */
-		String testUuid1 = UUID.randomUUID().toString();
-		String testUuid2 = UUID.randomUUID().toString();
-		char[] testTitle = "testTitle".toCharArray();
-		char[][] testAuthors = { "author1".toCharArray(), "author2".toCharArray(), "author3".toCharArray() };
-		char[] testAbstractText = "abstract".toCharArray();
-		char[][] testKeywords = { "key1".toCharArray(), "key2".toCharArray(), "key3".toCharArray() };
-		char[] testBody = "body".toCharArray();
-		char[][] testReferences = { "ref1".toCharArray(), "ref2".toCharArray(), "ref3".toCharArray() };
-		List<Integer> testGroups = Arrays.asList(1, 2, 3);
-		Topic testLevel = Topic.ADVANCED;
-
-		/**
-		 * Test help article which will be used for test cases.
-		 */
-		HelpArticle testHelpArticle1 = new HelpArticle(testUuid1, testTitle, testAuthors, testAbstractText,
-				testKeywords, testBody, testReferences, testGroups, testLevel);
-		HelpArticle testHelpArticle2 = new HelpArticle(testUuid2, testTitle, testAuthors, testAbstractText,
-				testKeywords, testBody, testReferences, testGroups, testLevel);
-
 		try {
-			HelpArticleService testService = new HelpArticleService();
-			final boolean cleanDBResult = testService.cleanDB();
-			assertTrue("Clean DB", cleanDBResult);
 			UserService testUserService = UserService.getInstance();
-			testUserService.setCurrentUser(new User(null, "username", UserService.hashPassword("password")));
-			testUserService.setCurrentRole(Role.STUDENT);
+			HelpArticleService testService = new HelpArticleService();
+			testUserService.cleanDB();
+			testService.cleanDB();
+			User testUser = testUserService.register("username", "PAS123word!");
+			int groupId = testService.modifyGroup(new ArticleGroup(-1, "1-ag", false, false), null, null);
+			
+			/**
+			 * Data that will be used for testing.
+			 */
+			String testUuid1 = UUID.randomUUID().toString();
+			String testUuid2 = UUID.randomUUID().toString();
+			char[] testTitle = "testTitle".toCharArray();
+			char[][] testAuthors = { "author1".toCharArray(), "author2".toCharArray(), "author3".toCharArray() };
+			char[] testAbstractText = "abstract".toCharArray();
+			char[][] testKeywords = { "key1".toCharArray(), "key2".toCharArray(), "key3".toCharArray() };
+			char[] testBody = "body".toCharArray();
+			char[][] testReferences = { "ref1".toCharArray(), "ref2".toCharArray(), "ref3".toCharArray() };
+			List<Integer> testGroups = Arrays.asList(groupId);
+			Topic testLevel = Topic.ADVANCED;
+			
+			/**
+			 * Test help article which will be used for test cases.
+			 */
+			HelpArticle testHelpArticle1 = new HelpArticle(testUuid1, testTitle, testAuthors, testAbstractText,
+					testKeywords, testBody, testReferences, testGroups, testLevel);
+			HelpArticle testHelpArticle2 = new HelpArticle(testUuid2, testTitle, testAuthors, testAbstractText,
+					testKeywords, testBody, testReferences, testGroups, testLevel);
+			
 
 			/**
 			 * Testing that initially there is 0 articles.
@@ -118,7 +120,7 @@ public class HelpArticleServiceTestingAutomation {
 			char[][] testAuthors2 = { "author3".toCharArray(), "author4".toCharArray(), "author5".toCharArray() };
 			testHelpArticle1.setAuthors(testAuthors2);
 			testService.modifyArticle(testHelpArticle1, true);
-			assertEqual("Editing article title", testService.getAllArticles().get(0).getTitle(), testTitle2);
+			assertEqual("Editing article title", testService.getAllArticles().get(0).getTitle(), new String(testTitle2));
 			assertEqual("Editing article authors", testService.getAllArticles().get(0).getAuthors(), testAuthors2);
 
 			/**
@@ -127,12 +129,6 @@ public class HelpArticleServiceTestingAutomation {
 			testService.backupArticles("articlesBackup.bak", Collections.emptyList());
 			testService.restoreArticles("articlesBackup.bak", false);
 			assertEqual("Back up and restore", testService.getAllArticles().size(), 1);
-
-			/**
-			 * Clean up.
-			 */
-			final boolean cleanDBResult2 = testService.cleanDB();
-			assertTrue("Clean DB", cleanDBResult2);
 		} catch (Exception e) {
 			System.out.println();
 			System.out.println(e);

@@ -463,7 +463,7 @@ public class HelpArticleService {
      * @param users    list of users.
      * @throws SQLException if an error occurs.
      */
-    public void modifyGroup(ArticleGroup group, List<String> articles, List<UserListItem> users) throws SQLException {
+    public int modifyGroup(ArticleGroup group, List<String> articles, List<UserListItem> users) throws SQLException {
         final boolean update = group.getId() != -1;
         final User currentUser = userService.getCurrentUser();
 
@@ -517,6 +517,8 @@ public class HelpArticleService {
                     "INSERT INTO article_group_users (group_id, user_id, is_admin) VALUES (?, ?, true)",
                     group.getId(), currentUser.getUuid());
         }
+        
+        return group.getId();
     }
 
     /**

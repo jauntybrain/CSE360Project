@@ -46,9 +46,15 @@ public class UserServiceTestingAutomation {
         /**
         * Data that will be used for testing.
         */
-        String testUsername = "username";
+        String testUsername = "username1";
         String testPassword = "Pass1wor!d";
         UserService testInstance = UserService.getInstance();
+        
+        /**
+        * Clean up.
+        */
+        boolean cleanDBResult = testInstance.cleanDB();
+        assertTrue("Clean DB", cleanDBResult);
 
         /**
         * Testing that initially there is 0 users.
@@ -134,10 +140,11 @@ public class UserServiceTestingAutomation {
         assertTrue("Delete User", deleteUserResult);
         assertEqual("Delete User", testInstance.getAllUsers().size(), 0);
 
+        
         /**
         * Clean up.
         */
-        final boolean cleanDBResult = testInstance.cleanDB();
+        cleanDBResult = testInstance.cleanDB();
         assertTrue("Clean DB", cleanDBResult);
 
         /**

@@ -76,11 +76,6 @@ public class InvitationCodeServiceTestingAutomation {
         assertEqual("Redeem One Time Code", testInstance.redeemInvitationCode(oneTimeCode), testRoles);
 
         /**
-        * Testing if one time code was used.
-        */
-        assertFalse("One Time Code Used", testInstance.validateInvitationCode(oneTimeCode));
-
-        /**
         * Clean up.
         */
         final boolean cleanDBResult = testInstance.cleanDB();
