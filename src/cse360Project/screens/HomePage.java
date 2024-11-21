@@ -25,7 +25,8 @@ import javafx.stage.Stage;
  * Copyright: CSE 360 Team Th02 © 2024
  * </p>
  * 
- * @version 1.01 2024-10-30 Phase two
+ * @version 1.01 2025-11-20 Phase three
+ *          1.00 2024-10-30 Phase two
  *          1.00 2024-10-09 Phase one
  * 
  */

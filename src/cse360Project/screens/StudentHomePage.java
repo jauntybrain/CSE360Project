@@ -19,11 +19,16 @@ import javafx.stage.Stage;
  * Copyright: CSE 360 Team Th02 © 2024
  * </p>
  * 
- * @version 1.00 2024-10-30 Phase two
+ * @version 1.00 2025-11-20 Phase three
  * 
  */
 public class StudentHomePage extends Application {
 
+    /**
+     * Starts the StudentHomePage.
+     * 
+     * @param primaryStage the primary stage.
+     */
     @Override
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Student Home Page");

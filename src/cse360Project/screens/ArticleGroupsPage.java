@@ -47,9 +47,14 @@ import java.util.HashSet;
  * 
  */
 public class ArticleGroupsPage extends Application {
-    private TableView<ArticleGroup> tableView;
-    private HelpArticleService helpArticleService;
+    // Services
+    private HelpArticleService helpArticleService = HelpArticleService.getInstance();
     private UserService userService = UserService.getInstance();
+
+    // Table for groups
+    private TableView<ArticleGroup> tableView;
+
+    // Root node
     private VBox rootNode;
 
     /**
@@ -61,10 +66,14 @@ public class ArticleGroupsPage extends Application {
         return rootNode;
     }
 
+    /**
+     * The main entry point for the JavaFX application.
+     * 
+     * @param primaryStage the primary stage.
+     * @throws Exception if application error occurs.
+     */
     @Override
     public void start(Stage primaryStage) throws Exception {
-        helpArticleService = new HelpArticleService();
-
         tableView = new TableView<>();
         setupTableView();
 
@@ -96,6 +105,9 @@ public class ArticleGroupsPage extends Application {
         EventService.getInstance().addArticleGroupsPageListener(this::loadGroups);
     }
 
+    /**
+     * Sets up the table view for groups.
+     */
     @SuppressWarnings("unchecked")
     private void setupTableView() {
         TableColumn<ArticleGroup, String> nameCol = new TableColumn<>("Name");
@@ -140,11 +152,16 @@ public class ArticleGroupsPage extends Application {
                 }
             }
         });
+
         actionCol.setPrefWidth(150);
 
         tableView.getColumns().addAll(nameCol, protectedCol, actionCol);
     }
 
+    /**
+     * Loads the groups into the table view.
+     * Calling this whenever we need to refresh the groups.
+     */
     private void loadGroups() {
         try {
             List<ArticleGroup> groups = helpArticleService.getAllGroups();
@@ -156,6 +173,11 @@ public class ArticleGroupsPage extends Application {
         }
     }
 
+    /**
+     * Shows the modify dialog (create or edit) for a group.
+     * 
+     * @param group the group to modify.
+     */
     private void showModifyDialog(ArticleGroup group) {
         Dialog<ArticleGroup> dialog = new Dialog<>();
         dialog.setTitle(group == null ? "Create Group" : "Edit Group");
@@ -164,41 +186,43 @@ public class ArticleGroupsPage extends Application {
         ButtonType saveButtonType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
 
-        // Group name field
+        // Group name
         TextField nameField = new TextField(group != null ? group.getName() : "");
         VBox nameBox = new VBox(5, new Label("Group Name:"), nameField);
 
-        // Articles List
+        // List of articles
         ListView<String> articlesListView = new ListView<>();
         Button addArticleButton = new Button("Add Articles");
         Button removeArticleButton = new Button("Remove Selected");
         VBox articleButtons = new VBox(5, addArticleButton, removeArticleButton);
         HBox articlesBox = new HBox(10, new VBox(5, new Label("Articles:"), articlesListView), articleButtons);
 
-        // Map to store article UUIDs to titles
-        HashMap<String, String> articleUUIDToTitleMap = new HashMap<>();
+        // Map to keep track of article IDs and titles
+        HashMap<String, String> articleIdToTitle = new HashMap<>();
 
-        // Load articles if editing
+        // Load articles (if editing)
         if (group != null) {
             try {
                 List<HelpArticle> groupArticles = helpArticleService.getGroupArticles(group.getId());
                 groupArticles.forEach(article -> {
                     articlesListView.getItems().add(article.getTitle());
-                    articleUUIDToTitleMap.put(article.getUuid(), article.getTitle());
+                    articleIdToTitle.put(article.getUuid(), article.getTitle());
                 });
             } catch (SQLException e) {
                 showError("Error", "Failed to load group articles");
             }
         }
 
-        // Protected checkbox and Users List
+        // Protected checkbox
         CheckBox protectedCheckBox = new CheckBox("Make protected?");
         protectedCheckBox.setSelected(group != null && group.isProtected());
 
+        // List of users
         ListView<UserListItem> usersListView = new ListView<>();
         Button addUserButton = new Button("Add Users");
         Button removeUserButton = new Button("Remove Selected");
 
+        // Disable user section if group is not protected
         usersListView.setDisable(!protectedCheckBox.isSelected());
         addUserButton.setDisable(!protectedCheckBox.isSelected());
         removeUserButton.setDisable(!protectedCheckBox.isSelected());
@@ -228,27 +252,30 @@ public class ArticleGroupsPage extends Application {
                     .collect(Collectors.toList()));
         }
 
-        // Enable/disable users section based on protected checkbox
+        // Listen to protected checkbox to enable/disable users section
         protectedCheckBox.selectedProperty().addListener((obs, oldVal, newVal) -> {
             usersListView.setDisable(!newVal);
             addUserButton.setDisable(!newVal);
             removeUserButton.setDisable(!newVal);
         });
 
-        // Add Article button action
-        addArticleButton.setOnAction(e -> showAddArticlesDialog(articlesListView, articleUUIDToTitleMap));
+        // on open article list
+        addArticleButton.setOnAction(e -> showAddArticlesDialog(articlesListView, articleIdToTitle));
 
-        // Remove Article button action
+        // on remove article
         removeArticleButton.setOnAction(e -> {
             List<String> selectedArticles = articlesListView.getSelectionModel().getSelectedItems();
             List<String> removableArticles = new ArrayList<>();
 
+            // filter out articles
             for (String articleTitle : selectedArticles) {
-                String articleUUID = articleUUIDToTitleMap.entrySet().stream()
+                String articleUUID = articleIdToTitle.entrySet().stream()
                         .filter(entry -> entry.getValue().equals(articleTitle))
                         .map(Map.Entry::getKey)
                         .findFirst()
                         .orElse(null);
+
+                // check if article is associated with other groups
                 if (group != null) {
                     if (articleUUID != null) {
                         try {
@@ -256,6 +283,7 @@ public class ArticleGroupsPage extends Application {
                             if (associatedGroups.size() > 1 || !associatedGroups.contains(group.getId())) {
                                 removableArticles.add(articleTitle);
                             } else {
+                                // restrict removal if article is only associated with this group
                                 showError("Cannot Remove Article",
                                         "Article \"" + articleTitle + "\" is only associated with this group.");
                             }
@@ -264,6 +292,7 @@ public class ArticleGroupsPage extends Application {
                             ex.printStackTrace();
                         }
                     } else {
+                        // edge case, caught
                         showError("Error", "Article \"" + articleTitle + "\" does not have a valid UUID.");
                     }
                 }
@@ -272,16 +301,17 @@ public class ArticleGroupsPage extends Application {
             articlesListView.getItems().removeAll(removableArticles);
         });
 
-        // Add User button action
+        // on open user list
         addUserButton.setOnAction(e -> showAddUsersDialog(usersListView));
 
-        // Remove User button action
+        // on remove user
         removeUserButton.setOnAction(e -> {
             List<UserListItem> selectedUsers = usersListView.getSelectionModel().getSelectedItems();
             List<UserListItem> removableUsers = new ArrayList<>();
 
             for (UserListItem user : selectedUsers) {
                 if (user.isAdmin()) {
+                    // make sure there is at least one admin left
                     long adminCount = usersListView.getItems().stream()
                             .filter(UserListItem::isAdmin)
                             .count();
@@ -289,6 +319,7 @@ public class ArticleGroupsPage extends Application {
                     if (adminCount > 1) {
                         removableUsers.add(user);
                     } else {
+                        // restrict removal if user is the last admin
                         Alert alert = new Alert(Alert.AlertType.WARNING);
                         alert.setTitle("Admin Required");
                         alert.setHeaderText(null);
@@ -303,7 +334,6 @@ public class ArticleGroupsPage extends Application {
             usersListView.getItems().removeAll(removableUsers);
         });
 
-        // Layout
         HBox listsContainer = new HBox(20, articlesBox, usersBox);
         VBox content = new VBox(20);
         content.getChildren().addAll(nameBox, listsContainer);
@@ -312,12 +342,13 @@ public class ArticleGroupsPage extends Application {
 
         dialog.getDialogPane().setContent(content);
 
-        // Add validation before saving
+        // validate before saving
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == saveButtonType) {
                 boolean hasAdmin = usersListView.getItems().stream()
                         .anyMatch(UserListItem::isAdmin);
 
+                // make sure there is at least one admin
                 if (!hasAdmin && protectedCheckBox.isSelected()) {
                     Alert alert = new Alert(Alert.AlertType.ERROR);
                     alert.setTitle("Validation Error");
@@ -327,9 +358,9 @@ public class ArticleGroupsPage extends Application {
                     return null;
                 }
 
-                // Convert ListView items to UUIDs
+                // get article UUIDs instead of titles
                 List<String> articleUUIDs = articlesListView.getItems().stream()
-                        .map(title -> articleUUIDToTitleMap.entrySet().stream()
+                        .map(title -> articleIdToTitle.entrySet().stream()
                                 .filter(entry -> entry.getValue().equals(title))
                                 .map(Map.Entry::getKey)
                                 .findFirst()
@@ -343,12 +374,15 @@ public class ArticleGroupsPage extends Application {
                         group != null && group.isAdmin());
 
                 try {
+                    // save modified group
                     helpArticleService.modifyGroup(modifiedGroup, articleUUIDs, usersListView.getItems());
                 } catch (SQLException e) {
                     showError("Error", "Failed to modify group");
                     e.printStackTrace();
                 }
+                // refresh groups
                 loadGroups();
+                // notify listeners
                 EventService.getInstance().notifyHelpArticlesPage();
             }
             return null;
@@ -357,8 +391,15 @@ public class ArticleGroupsPage extends Application {
         dialog.showAndWait();
     }
 
+    /**
+     * Shows the add articles dialog.
+     * 
+     * @param articlesListView the list of articles to add.
+     * @param articleIdToTitle the map of article IDs to titles.
+     */
     private void showAddArticlesDialog(ListView<String> articlesListView,
-            HashMap<String, String> articleUUIDToTitleMap) {
+            HashMap<String, String> articleIdToTitle) {
+        
         Dialog<List<String>> dialog = new Dialog<>();
         dialog.setTitle("Add Articles");
         dialog.setHeaderText("Select articles to add");
@@ -370,6 +411,7 @@ public class ArticleGroupsPage extends Application {
         availableArticles.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
         try {
+            // get all articles, show in format "title (uuid)"
             List<HelpArticle> allArticles = helpArticleService.getAllArticles();
             Set<String> existingTitles = new HashSet<>(articlesListView.getItems());
             availableArticles.getItems().addAll(
@@ -393,17 +435,23 @@ public class ArticleGroupsPage extends Application {
             return null;
         });
 
+        // return results
         dialog.showAndWait().ifPresent(selectedArticles -> {
             selectedArticles.forEach(entry -> {
                 String[] parts = entry.split(" \\(");
                 String title = parts[0];
                 String uuid = parts[1].substring(0, parts[1].length() - 1); // Remove the closing parenthesis
                 articlesListView.getItems().add(title);
-                articleUUIDToTitleMap.put(uuid, title);
+                articleIdToTitle.put(uuid, title);
             });
         });
     }
 
+    /**
+     * Shows the add users dialog.
+     * 
+     * @param usersListView the list of users to add.
+     */
     private void showAddUsersDialog(ListView<UserListItem> usersListView) {
         Dialog<List<UserListItem>> dialog = new Dialog<>();
         dialog.setTitle("Add Users");
@@ -415,12 +463,12 @@ public class ArticleGroupsPage extends Application {
         ListView<UserListItem> availableUsers = new ListView<>();
         availableUsers.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
-        // Get the usernames of already selected users
+        // get the usernames of already selected users
         Set<String> existingUsernames = usersListView.getItems().stream()
                 .map(UserListItem::getUsername)
                 .collect(Collectors.toSet());
 
-        // Load users from userService, excluding already selected ones
+        // load all users and exclude if already selected
         List<User> users = userService.getAllUsers();
         availableUsers.getItems().addAll(
                 users.stream()
@@ -446,38 +494,47 @@ public class ArticleGroupsPage extends Application {
         dialog.showAndWait().ifPresent(selectedUsers -> usersListView.getItems().addAll(selectedUsers));
     }
 
-    // Helper class for user list items with admin checkbox
+
+    /**
+     * Helper UI class for user list items with admin checkbox.
+     */
     public static class UserListItem extends HBox {
         private CheckBox adminCheckBox;
         private final Label rolesLabel;
         private final String username;
 
+        /**
+         * Creates a new UserListItem.
+         * 
+         * @param username the username.
+         * @param isAdmin  if the user has admin rights.
+         * @param roles    the roles of the user.
+         * @param isCreator if the user is the creator.
+         */
         public UserListItem(String username, boolean isAdmin, List<Role> roles, boolean isCreator) {
             super(10);
             this.username = username;
 
             Label usernameLabel = new Label(username);
 
-            // Add roles label
             String roleText = roles.stream()
                     .map(Role::name)
                     .collect(Collectors.joining(", "));
             rolesLabel = new Label("(" + roleText + ")");
             rolesLabel.setStyle("-fx-font-style: italic;");
 
-            // Check if the user has only the Student role
+            // dont show admin checkbox if user is only student
             boolean isOnlyStudent = roles.size() == 1 && roles.contains(Role.STUDENT);
 
             if (!isOnlyStudent) {
                 adminCheckBox = new CheckBox("Admin rights");
                 adminCheckBox.setSelected(isAdmin);
 
-                // If this is the creator, add a note
                 if (isCreator) {
                     usernameLabel.setText(username + " (Creator)");
                 }
 
-                // Add listener to prevent unchecking if it's the last admin
+                // prevent unchecking if it's the last admin
                 adminCheckBox.setOnAction(e -> {
                     try {
                         if (!adminCheckBox.isSelected()) {
@@ -506,22 +563,37 @@ public class ArticleGroupsPage extends Application {
             }
         }
 
+        /**
+         * Gets the username.
+         * 
+         * @return the username.
+         */
         public String getUsername() {
             return username;
         }
 
+        /**
+         * Checks if the user has admin rights.
+         * 
+         * @return if the user has admin rights.
+         */
         public boolean isAdmin() {
             return adminCheckBox != null && adminCheckBox.isSelected();
         }
     }
 
+    /**
+     * Shows the delete confirmation dialog.
+     * 
+     * @param group the group to delete.
+     */
     private void showDeleteConfirmation(ArticleGroup group) {
         try {
-            // Get articles associated with the group
+            // get group articles
             List<HelpArticle> groupArticles = helpArticleService.getGroupArticles(group.getId());
             List<String> articlesPreventingDeletion = new ArrayList<>();
 
-            // Check if any article is only associated with this group
+            // check if any article is ONLY associated with this group
             for (HelpArticle article : groupArticles) {
                 List<Integer> associatedGroups = helpArticleService.getArticleGroupIds(article.getUuid());
                 if (associatedGroups.size() == 1 && associatedGroups.contains(group.getId())) {
@@ -530,9 +602,9 @@ public class ArticleGroupsPage extends Application {
             }
 
             if (!articlesPreventingDeletion.isEmpty()) {
-                // Show warning if there are articles preventing deletion
+                // if there are articles preventing deletion, show warning
                 Alert alert = new Alert(Alert.AlertType.WARNING);
-                alert.setTitle("Delete Restricted");
+                alert.setTitle("Deletion Restricted");
                 alert.setHeaderText("Cannot delete group: " + group.getName());
                 alert.setContentText(
                         "The following articles are only associated with this group and prevent deletion:\n" +
@@ -542,20 +614,22 @@ public class ArticleGroupsPage extends Application {
                 return;
             }
 
-            // Proceed with deletion confirmation
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-            alert.setTitle("Confirm Delete");
+            alert.setTitle("Confirm Deletetion");
             alert.setHeaderText("Delete Group: " + group.getName());
             alert.setContentText("Are you sure you want to delete this group? This action cannot be undone.");
 
             alert.showAndWait().ifPresent(result -> {
                 if (result == ButtonType.OK) {
                     try {
+                        // delete group
                         helpArticleService.deleteGroup(group.getId());
-                        loadGroups(); // Refresh the table
+
+                        // refresh groups, notify listeners
+                        loadGroups();
                         EventService.getInstance().notifyHelpArticlesPage();
                     } catch (Exception e) {
-                        showError("Delete Failed", "Failed to delete group: " + e.getMessage());
+                        showError("Deletion Failed", "Failed to delete group: " + e.getMessage());
                     }
                 }
             });
@@ -564,6 +638,12 @@ public class ArticleGroupsPage extends Application {
         }
     }
 
+    /**
+     * Shows an error dialog.
+     * 
+     * @param title   the title.
+     * @param message the message.
+     */
     private void showError(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(title);
@@ -572,10 +652,18 @@ public class ArticleGroupsPage extends Application {
         alert.showAndWait();
     }
 
+    /**
+     * Launches the application.
+     * 
+     * @param args the arguments.
+     */
     public static void main(String[] args) {
         launch(args);
     }
 
+    /**
+     * Stops the application, removing listeners.
+     */
     @Override
     public void stop() {
         EventService.getInstance().removeAllArticleGroupsPageListeners();

@@ -16,7 +16,7 @@ import java.sql.*;
  * Copyright: CSE 360 Team Th02 © 2024
  * </p>
  * 
- * @version 1.00 2024-10-09 Phase one
+ * @version 1.00 2024-11-20 Phase three
  */
 public class DatabaseService {
     private static DatabaseService instance;
@@ -26,8 +26,10 @@ public class DatabaseService {
     private static final String USER = "sa";
     private static final String PASS = "";
 
+    /**
+     * Initializes the database service.
+     */
     private DatabaseService() {
-        // Initialize the database driver
         try {
             Class.forName(JDBC_DRIVER);
             createTables();
@@ -38,6 +40,11 @@ public class DatabaseService {
         }
     }
 
+    /**
+     * Gets the instance of the database service.
+     * 
+     * @return the database service instance.
+     */
     public static DatabaseService getInstance() {
         if (instance == null) {
             instance = new DatabaseService();
@@ -45,6 +52,11 @@ public class DatabaseService {
         return instance;
     }
 
+    /**
+     * Creates the tables in the database.
+     * 
+     * @throws SQLException if an error occurs.
+     */
     private void createTables() throws SQLException {
         createUsersTable();
         createArticlesTable();
@@ -53,6 +65,11 @@ public class DatabaseService {
         createHelpRequestsTable();
     }
 
+    /**
+     * Creates the articles table in the database.
+     * 
+     * @throws SQLException if an error occurs.
+     */
     private void createArticlesTable() throws SQLException {
         final Connection connection = getConnection();
         final Statement statement = connection.createStatement();
@@ -80,6 +97,11 @@ public class DatabaseService {
         }
     }
 
+    /**
+     * Creates the article groups table in the database.
+     * 
+     * @throws SQLException if an error occurs.
+     */
     private void createArticleGroupsTable() throws SQLException {
         final Connection connection = getConnection();
         final Statement statement = connection.createStatement();
@@ -121,6 +143,11 @@ public class DatabaseService {
         }
     }
 
+    /**
+     * Creates the users table in the database.
+     * 
+     * @throws SQLException if an error occurs.
+     */
     private void createUsersTable() throws SQLException {
         final Connection connection = getConnection();
         final Statement statement = connection.createStatement();
@@ -173,6 +200,11 @@ public class DatabaseService {
         }
     }
 
+    /**
+     * Creates the invitation codes table in the database.
+     * 
+     * @throws SQLException if an error occurs.
+     */
     private void createInvitationCodesTable() throws SQLException {
         final Connection connection = getConnection();
         final Statement statement = connection.createStatement();
@@ -204,6 +236,11 @@ public class DatabaseService {
         }
     }
 
+    /**
+     * Creates the help requests table in the database.
+     * 
+     * @throws SQLException if an error occurs.
+     */
     private void createHelpRequestsTable() throws SQLException {
         String sql = """
             CREATE TABLE IF NOT EXISTS help_requests (
@@ -218,7 +255,7 @@ public class DatabaseService {
     }
 
     /**
-     * Gets a database connection.
+     * Gets the database connection.
      * 
      * @return A Connection object
      * @throws SQLException if a database access error occurs

@@ -87,7 +87,7 @@ public class ArticleGroup implements Serializable {
     }
 
     /**
-     * Sets whether the group is protected.
+     * Sets whether the group is protected (requires special access).
      * 
      * @param isProtected whether the group is protected.
      */
@@ -105,9 +105,9 @@ public class ArticleGroup implements Serializable {
     }
 
     /**
-     * Sets whether the group can be edited.
+     * Sets whether user has admin privileges.
      * 
-     * @param isAdmin whether the group can be edited.
+     * @param isAdmin whether user has admin privileges.
      */
     public void setAdmin(boolean isAdmin) {
         this.isAdmin = isAdmin;

@@ -41,7 +41,8 @@ import cse360Project.screens.ArticleGroupsPage.UserListItem;
  * Copyright: CSE 360 Team Th02 © 2024
  * </p>
  * 
- * @version 1.00 2024-10-30 Phase two
+ * @version 1.01 2025-11-20 Phase three
+ *          1.00 2024-10-30 Phase two
  * 
  */
 public class HelpArticleService {
@@ -61,6 +62,11 @@ public class HelpArticleService {
         userService = UserService.getInstance();
     }
 
+    /**
+     * Gets the instance of the HelpArticleService.
+     * 
+     * @return the HelpArticleService instance.
+     */
     public static HelpArticleService getInstance() {
         if (instance == null) {
             try {
@@ -178,7 +184,7 @@ public class HelpArticleService {
             }
         }
 
-        // Get encrypted articles data from database directly
+        // Get encrypted articles data from DB
         List<Map<String, String>> encryptedArticles = new ArrayList<>();
         for (HelpArticle article : articlesToBackup) {
             String query = "SELECT * FROM articles WHERE uuid = ?";
@@ -198,7 +204,7 @@ public class HelpArticleService {
             }
         }
 
-        // Get relationships data
+        // Get relationships
         for (ArticleGroup group : groupsToBackup) {
             // Get group users
             String userQuery = "SELECT user_id, is_admin FROM article_group_users WHERE group_id = ?";
@@ -220,12 +226,14 @@ public class HelpArticleService {
             }
         }
 
+        // Create full backup data
         BackupArticleData backupData = new BackupArticleData(
                 encryptedArticles,
                 groupsToBackup,
                 groupUsersToBackup,
                 groupArticlesToBackup);
 
+        // Write to file
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filename))) {
             oos.writeObject(backupData);
         }
@@ -242,18 +250,18 @@ public class HelpArticleService {
         try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filename))) {
             BackupArticleData backupData = (BackupArticleData) ois.readObject();
 
+            // Clean DB if replacing
             if (!merge) {
                 cleanDB();
             }
 
-            // Restore groups first
+            // First restore groups
             for (ArticleGroup group : backupData.getGroups()) {
+                // if merging, update based on ID
                 if (merge) {
-                    // Check if group exists
                     String checkSQL = "SELECT id FROM article_groups WHERE id = ?";
                     ResultSet rs = databaseService.executeQuery(checkSQL, group.getId());
                     if (rs.next()) {
-                        // Update existing group
                         databaseService.executeUpdate(
                                 "UPDATE article_groups SET name = ?, is_protected = ? WHERE id = ?",
                                 group.getName(), group.isProtected(), group.getId());
@@ -261,22 +269,24 @@ public class HelpArticleService {
                     }
                 }
 
-                // Insert new group
+                // insert group
                 databaseService.executeUpdate(
                         "INSERT INTO article_groups (id, name, is_protected) VALUES (?, ?, ?)",
                         group.getId(), group.getName(), group.isProtected());
             }
 
-            // Restore encrypted articles directly
+            // Restore articles (no need to decrypt)
             for (Map<String, String> encryptedArticle : backupData.getEncryptedArticles()) {
+                // if merging, skip existing articles based on ID
                 if (merge) {
                     String checkSQL = "SELECT uuid FROM articles WHERE uuid = ?";
                     ResultSet rs = databaseService.executeQuery(checkSQL, encryptedArticle.get("uuid"));
                     if (rs.next()) {
-                        continue; // Skip existing articles in merge mode
+                        continue;
                     }
                 }
 
+                // insert article
                 String insertSQL = """
                             INSERT INTO articles (uuid, title, authors, abstract, keywords, body, references, level, iv)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -294,13 +304,18 @@ public class HelpArticleService {
                         encryptedArticle.get("iv"));
             }
 
+            // Next, restore relationships
+
             // Restore group users
             for (ArticleGroupUser groupUser : backupData.getGroupUsers()) {
+                // if merging, delete existing group users
                 if (merge) {
                     databaseService.executeUpdate(
                             "DELETE FROM article_group_users WHERE group_id = ? AND user_id = ?",
                             groupUser.getGroupId(), groupUser.getUserId());
                 }
+                
+                // insert relationship
                 databaseService.executeUpdate(
                         "INSERT INTO article_group_users (group_id, user_id, is_admin) VALUES (?, ?, ?)",
                         groupUser.getGroupId(), groupUser.getUserId(), groupUser.isAdmin());
@@ -308,11 +323,14 @@ public class HelpArticleService {
 
             // Restore group articles
             for (ArticleGroupArticle groupArticle : backupData.getGroupArticles()) {
+                // if merging, delete existing group articles
                 if (merge) {
                     databaseService.executeUpdate(
                             "DELETE FROM article_group_articles WHERE group_id = ? AND article_id = ?",
                             groupArticle.getGroupId(), groupArticle.getArticleId());
                 }
+
+                // insert group article
                 databaseService.executeUpdate(
                         "INSERT INTO article_group_articles (group_id, article_id) VALUES (?, ?)",
                         groupArticle.getGroupId(), groupArticle.getArticleId());
@@ -345,6 +363,13 @@ public class HelpArticleService {
         return groups;
     }
 
+    /**
+     * Gets the group IDs for an article.
+     * 
+     * @param uuid the UUID of the article.
+     * @return list of group IDs.
+     * @throws SQLException if an error occurs.
+     */
     public List<Integer> getArticleGroupIds(String uuid) throws SQLException {
         String query = """
                 SELECT ag.id
@@ -360,6 +385,13 @@ public class HelpArticleService {
         return groups;
     }
 
+    /**
+     * Gets the articles for a group.
+     * 
+     * @param groupId the ID of the group.
+     * @return list of articles.
+     * @throws SQLException if an error occurs.
+     */
     public List<HelpArticle> getGroupArticles(int groupId) throws SQLException {
         String query = "SELECT * FROM articles a JOIN article_group_articles aga ON a.uuid = aga.article_id WHERE aga.group_id = ?";
         ResultSet rs = databaseService.executeQuery(query, groupId);
@@ -375,6 +407,13 @@ public class HelpArticleService {
         return articles;
     }
 
+    /**
+     * Gets the users for a group.
+     * 
+     * @param groupId the ID of the group.
+     * @return map of users and their admin status.
+     * @throws SQLException if an error occurs.
+     */
     public HashMap<User, Boolean> getGroupUsers(int groupId) {
         try {
             String query = "SELECT u.uuid, u.username, agu.is_admin FROM users u JOIN article_group_users agu ON u.uuid = agu.user_id WHERE agu.group_id = ?";
@@ -395,7 +434,7 @@ public class HelpArticleService {
     }
 
     /**
-     * Gets articles by groups.
+     * Gets articles for groups.
      * 
      * @param groups list of groups.
      * @return list of articles.
@@ -428,12 +467,12 @@ public class HelpArticleService {
         final boolean update = group.getId() != -1;
         final User currentUser = userService.getCurrentUser();
 
-        // If updating, first delete existing relationships
+        // If updating, delete existing relationships first
         if (update) {
             databaseService.executeUpdate("DELETE FROM article_group_articles WHERE group_id = ?", group.getId());
             databaseService.executeUpdate("DELETE FROM article_group_users WHERE group_id = ?", group.getId());
 
-            // Update group details
+            // Update group
             databaseService.executeUpdate(
                     "UPDATE article_groups SET name = ?, is_protected = ? WHERE id = ?",
                     group.getName(), group.isProtected(), group.getId());
@@ -455,7 +494,7 @@ public class HelpArticleService {
             }
         }
 
-        // Insert article relationships
+        // Insert relationships - articles
         if (articles != null && !articles.isEmpty()) {
             for (String articleId : articles) {
                 databaseService.executeUpdate(
@@ -464,9 +503,8 @@ public class HelpArticleService {
             }
         }
 
-        // Insert user relationships
+        // Insert relationships - users
         if (users != null && !users.isEmpty()) {
-            // Add all users (including current user if present in the list)
             for (UserListItem user : users) {
                 databaseService.executeUpdate(
                         "INSERT INTO article_group_users (group_id, user_id, is_admin) VALUES (?, ?, ?)",
@@ -474,7 +512,7 @@ public class HelpArticleService {
                         user.isAdmin());
             }
         } else {
-            // If no users specified, just add current user as admin
+            // If there are no users specified, add current user as admin
             databaseService.executeUpdate(
                     "INSERT INTO article_group_users (group_id, user_id, is_admin) VALUES (?, ?, true)",
                     group.getId(), currentUser.getUuid());
@@ -618,7 +656,14 @@ public class HelpArticleService {
         }
     }
 
-    // Add this method to send a help request
+    /**
+     * Sends a help request.
+     * 
+     * @param userId    the ID of the user.
+     * @param message   the message.
+     * @param searchHistory the search history.
+     * @throws SQLException if an error occurs.
+     */
     public void sendHelpRequest(String userId, String message, String searchHistory) throws SQLException {
         System.out.println(
                 "INFO: Sending help request with message: " + message + " and search history: " + searchHistory);

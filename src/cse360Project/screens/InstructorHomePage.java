@@ -19,7 +19,8 @@ import javafx.stage.Stage;
  * Copyright: CSE 360 Team Th02 © 2024
  * </p>
  * 
- * @version 1.00 2024-10-30 Phase two
+ * @version 1.01 2025-11-20 Phase three
+ *          1.00 2024-10-30 Phase two
  * 
  */
 public class InstructorHomePage extends Application {
@@ -47,7 +48,7 @@ public class InstructorHomePage extends Application {
         Tab articleGroupsTab = new Tab("Article Groups");
         articleGroupsTab.setClosable(false);
 
-        // Load content from ArticleGroupsPage
+        // Load ArticleGroupsPage
         ArticleGroupsPage articleGroupsPage = new ArticleGroupsPage();
         try {
             articleGroupsPage.start(primaryStage);
@@ -55,7 +56,6 @@ public class InstructorHomePage extends Application {
             e.printStackTrace();
         }
 
-        // Add the ArticleGroupsPage's root node to the tab
         articleGroupsTab.setContent(articleGroupsPage.getRootNode());
         tabPane.getTabs().add(articleGroupsTab);
 

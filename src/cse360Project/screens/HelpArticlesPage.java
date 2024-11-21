@@ -45,7 +45,8 @@ import java.util.stream.Collectors;
  * Copyright: CSE 360 Team Th02 © 2024
  * </p>
  * 
- * @version 1.00 2024-10-30 Phase two
+ * @version 1.01 2025-11-20 Phase three
+ *          1.00 2024-10-30 Phase two
  * 
  */
 public class HelpArticlesPage extends Application {
@@ -627,7 +628,7 @@ public class HelpArticlesPage extends Application {
         VBox checkboxContainer = new VBox(5);
         Map<String, CheckBox> checkboxes = new HashMap<>();
 
-        // Add "All Groups" checkbox
+        // add "all groups" checkbox
         CheckBox allGroupsCheckbox = new CheckBox("All Groups");
         allGroupsCheckbox.setSelected(true);
         checkboxContainer.getChildren().add(allGroupsCheckbox);
@@ -638,7 +639,7 @@ public class HelpArticlesPage extends Application {
         // Add other group checkboxes
         for (ArticleGroup group : allGroups) {
             CheckBox cb = new CheckBox(group.getName());
-            cb.setDisable(true); // Initially disabled since "All Groups" is selected
+            cb.setDisable(true); // initially disabled since "all groups" is selected
             checkboxes.put(group.getName(), cb);
             checkboxContainer.getChildren().add(cb);
         }
@@ -882,14 +883,14 @@ public class HelpArticlesPage extends Application {
         VBox checkboxContainer = new VBox(5);
         Map<Topic, CheckBox> checkboxes = new HashMap<>();
 
-        // Add "All Levels" checkbox
+        // add "all levels" checkbox
         CheckBox allLevelsCheckbox = new CheckBox("All Levels");
         allLevelsCheckbox.setSelected(selectedLevels.isEmpty());
         checkboxContainer.getChildren().add(allLevelsCheckbox);
 
         checkboxContainer.getChildren().add(new Separator());
 
-        // Add checkboxes for each level
+        // add checkboxes for all levels
         for (Topic level : Topic.values()) {
             CheckBox cb = new CheckBox(level.name());
             cb.setSelected(selectedLevels.contains(level));
@@ -897,7 +898,7 @@ public class HelpArticlesPage extends Application {
             checkboxContainer.getChildren().add(cb);
         }
 
-        // Handle "All Levels" checkbox logic
+        // handle "all levels" checkbox logic
         allLevelsCheckbox.setOnAction(e -> {
             if (allLevelsCheckbox.isSelected()) {
                 checkboxes.values().forEach(cb -> {
@@ -983,7 +984,8 @@ public class HelpArticlesPage extends Application {
      * Copyright: CSE 360 Team Th02 © 2024
      * </p>
      * 
-     * @version 1.00 Phase two
+     * @version 1.01 Phase three
+     *          1.00 Phase two
      * 
      */
     public static class HelpArticleRow {
@@ -1067,6 +1069,9 @@ public class HelpArticlesPage extends Application {
         }
     }
 
+    /**
+     * Shows the help request dialog.
+     */
     private void showHelpRequestDialog() {
         Dialog<Void> dialog = new Dialog<>();
         dialog.setTitle("Send Help Request");

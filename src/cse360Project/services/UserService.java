@@ -30,7 +30,8 @@ import java.time.LocalDateTime;
  * Copyright: CSE 360 Team Th02 © 2024
  * </p>
  * 
- * @version 1.00 2024-10-09 Phase one
+ * @version 1.01 2025-11-20 Phase three
+ *          1.00 2024-10-09 Phase one
  * 
  */
 public class UserService {
