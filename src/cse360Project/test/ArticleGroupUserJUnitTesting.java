@@ -30,6 +30,9 @@ import cse360Project.models.ArticleGroupUser;
  */
 public class ArticleGroupUserJUnitTesting {
 
+	/**
+     * Instance used for testing.
+     */
 	private static ArticleGroupUser articleGroupUser;
 	
 	/**
@@ -40,16 +43,25 @@ public class ArticleGroupUserJUnitTesting {
 		articleGroupUser = new ArticleGroupUser(1, "user1", true);
 	}
 
+	/**
+     * Testing group id equality.
+     */
 	@Test
 	public void testGetGroupId() {
 		assertEquals("ArticleGroupUser get group id", articleGroupUser.getGroupId(), 1);
 	}
 	
+	/**
+     * Testing user id equality.
+     */
 	@Test
 	public void testGetUserId() {
 		assertEquals("ArticleGroupUser get user id", articleGroupUser.getUserId(), "user1");
 	}
 
+	/**
+     * Testing articleGroupUser is admin.
+     */
 	@Test
 	public void testIsAdmin() {
 		assertEquals("ArticleGroupUser is admin", articleGroupUser.isAdmin(), true);

@@ -30,6 +30,9 @@ import cse360Project.models.ArticleGroupArticle;
  */
 public class ArticleGroupArticleJUnitTesting {
 
+	/**
+     * Instance used for testing.
+     */
 	private static ArticleGroupArticle articleGroupArticle;
 	
 	/**
@@ -40,11 +43,17 @@ public class ArticleGroupArticleJUnitTesting {
 		articleGroupArticle = new ArticleGroupArticle(1, "aga1");
 	}
 
+	/**
+     * Testing article id equality.
+     */
 	@Test
 	public void testGetArticleId() {
 		assertEquals("ArticleGroupArticle get article id", articleGroupArticle.getArticleId(), "aga1");
 	}
-	
+
+	/**
+     * Testing group id equality.
+     */
 	@Test
 	public void testGetGroupId() {
 		assertEquals("ArticleGroupArticle get group id", articleGroupArticle.getGroupId(), 1);
