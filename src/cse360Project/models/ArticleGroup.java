@@ -1,5 +1,7 @@
 package cse360Project.models;
 
+import java.io.Serializable;
+
 /*******
  * <p>
  * ArticleGroup.
@@ -16,7 +18,9 @@ package cse360Project.models;
  * @version 1.00 2024-11-20 Phase three
  * 
  */
-public class ArticleGroup {
+public class ArticleGroup implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private int id;
     private String name;
     private boolean isProtected;

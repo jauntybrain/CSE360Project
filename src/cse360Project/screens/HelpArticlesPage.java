@@ -17,6 +17,7 @@ import cse360Project.models.ArticleGroup;
 import cse360Project.models.HelpArticle;
 import cse360Project.models.Role;
 import cse360Project.models.Topic;
+import cse360Project.screens.HelpArticlesPage.HelpArticleRow;
 import cse360Project.services.*;
 import javafx.application.Platform;
 
@@ -155,7 +156,7 @@ public class HelpArticlesPage extends Application {
 
         loadArticles();
 
-        EventService.getInstance().addGroupUpdateListener(this::loadArticles);
+        EventService.getInstance().addHelpArticlesPageListener(this::loadArticles);
     }
 
     /**
@@ -729,6 +730,7 @@ public class HelpArticlesPage extends Application {
                     if (response != cancelButton) {
                         helpArticleService.restoreArticles(file.getAbsolutePath(), merge);
                         loadArticles();
+                        EventService.getInstance().notifyArticleGroupsPage();
                         Alert alert = new Alert(Alert.AlertType.INFORMATION);
                         alert.setTitle("Restore Successful");
                         alert.setHeaderText(null);
@@ -956,6 +958,16 @@ public class HelpArticlesPage extends Application {
      */
     public static void main(String[] args) {
         launch(args);
+    }
+
+    @Override
+    public void stop() {
+        EventService.getInstance().removeAllHelpArticlesPageListeners();
+        try {
+            super.stop();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     /*******

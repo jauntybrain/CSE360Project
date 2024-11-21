@@ -11,12 +11,16 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import cse360Project.services.encryption.*;
 import cse360Project.models.ArticleGroup;
+import cse360Project.models.ArticleGroupArticle;
+import cse360Project.models.ArticleGroupUser;
+import cse360Project.models.BackupArticleData;
 import cse360Project.models.HelpArticle;
 import cse360Project.models.Role;
 import cse360Project.models.Topic;
@@ -157,44 +161,73 @@ public class HelpArticleService {
      */
     public void backupArticles(String filename, List<Integer> selectedGroups) throws Exception {
         List<HelpArticle> articlesToBackup;
+        List<ArticleGroup> groupsToBackup = new ArrayList<>();
+        List<ArticleGroupUser> groupUsersToBackup = new ArrayList<>();
+        List<ArticleGroupArticle> groupArticlesToBackup = new ArrayList<>();
 
-        // Get articles to backup
+        // Get articles and groups to backup
         if (selectedGroups.isEmpty()) {
             articlesToBackup = getAllArticles();
+            groupsToBackup = getAllGroups();
         } else {
-            articlesToBackup = getArticlesByGroups(new ArrayList<>(selectedGroups));
+            articlesToBackup = getArticlesByGroups(selectedGroups);
+            for (int groupId : selectedGroups) {
+                groupsToBackup.addAll(getAllGroups().stream()
+                        .filter(g -> g.getId() == groupId)
+                        .collect(Collectors.toList()));
+            }
         }
 
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filename))) {
-            for (HelpArticle article : articlesToBackup) {
-                // Create a unique IV
-                byte[] iv = EncryptionUtils.getInitializationVector(UUID.randomUUID().toString().toCharArray());
-
-                // Encrypt each field of the article
-                String encryptedTitle = encryptField(article.getTitle(), iv);
-                String encryptedAuthors = encryptField(charArraysToString(article.getAuthors()), iv);
-                String encryptedAbstractText = encryptField(article.getAbstractText(), iv);
-                String encryptedKeywords = encryptField(charArraysToString(article.getKeywords()), iv);
-                String encryptedBody = encryptField(article.getBody(), iv);
-                String encryptedReferences = encryptField(charArraysToString(article.getReferences()), iv);
-                String encryptedGroups = encryptField(article.getGroups().stream()
-                        .map(String::valueOf)
-                        .collect(Collectors.joining(",")), iv);
-                String encryptedLevel = encryptField(article.getLevel().toString(), iv);
-
-                // Store encrypted data
-                oos.writeObject(encryptedTitle);
-                oos.writeObject(encryptedAuthors);
-                oos.writeObject(encryptedAbstractText);
-                oos.writeObject(encryptedKeywords);
-                oos.writeObject(encryptedBody);
-                oos.writeObject(encryptedReferences);
-                oos.writeObject(encryptedGroups);
-                oos.writeObject(encryptedLevel);
-
-                oos.writeObject(Base64.getEncoder().encodeToString(iv));
-                oos.writeObject(article.getUuid());
+        // Get encrypted articles data from database directly
+        List<Map<String, String>> encryptedArticles = new ArrayList<>();
+        for (HelpArticle article : articlesToBackup) {
+            String query = "SELECT * FROM articles WHERE uuid = ?";
+            ResultSet rs = databaseService.executeQuery(query, article.getUuid());
+            if (rs.next()) {
+                Map<String, String> encryptedData = new HashMap<>();
+                encryptedData.put("uuid", rs.getString("uuid"));
+                encryptedData.put("title", rs.getString("title"));
+                encryptedData.put("authors", rs.getString("authors"));
+                encryptedData.put("abstract", rs.getString("abstract"));
+                encryptedData.put("keywords", rs.getString("keywords"));
+                encryptedData.put("body", rs.getString("body"));
+                encryptedData.put("references", rs.getString("references"));
+                encryptedData.put("level", rs.getString("level"));
+                encryptedData.put("iv", rs.getString("iv"));
+                encryptedArticles.add(encryptedData);
             }
+        }
+
+        // Get relationships data
+        for (ArticleGroup group : groupsToBackup) {
+            // Get group users
+            String userQuery = "SELECT user_id, is_admin FROM article_group_users WHERE group_id = ?";
+            ResultSet userRs = databaseService.executeQuery(userQuery, group.getId());
+            while (userRs.next()) {
+                groupUsersToBackup.add(new ArticleGroupUser(
+                        group.getId(),
+                        userRs.getString("user_id"),
+                        userRs.getBoolean("is_admin")));
+            }
+
+            // Get group articles
+            String articleQuery = "SELECT article_id FROM article_group_articles WHERE group_id = ?";
+            ResultSet articleRs = databaseService.executeQuery(articleQuery, group.getId());
+            while (articleRs.next()) {
+                groupArticlesToBackup.add(new ArticleGroupArticle(
+                        group.getId(),
+                        articleRs.getString("article_id")));
+            }
+        }
+
+        BackupArticleData backupData = new BackupArticleData(
+                encryptedArticles,
+                groupsToBackup,
+                groupUsersToBackup,
+                groupArticlesToBackup);
+
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filename))) {
+            oos.writeObject(backupData);
         }
     }
 
@@ -206,60 +239,83 @@ public class HelpArticleService {
      * @throws Exception if I/O or decryption error occurs.
      */
     public void restoreArticles(String filename, boolean merge) throws Exception {
-        // Clear all articles if not merging
-        if (!merge) {
-            cleanDB();
-        }
-
         try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filename))) {
-            while (true) {
-                try {
-                    // Get encrypted fields
-                    String encryptedTitle = (String) ois.readObject();
-                    String encryptedAuthors = (String) ois.readObject();
-                    String encryptedAbstractText = (String) ois.readObject();
-                    String encryptedKeywords = (String) ois.readObject();
-                    String encryptedBody = (String) ois.readObject();
-                    String encryptedReferences = (String) ois.readObject();
-                    String encryptedGroups = (String) ois.readObject();
-                    String encryptedLevel = (String) ois.readObject();
+            BackupArticleData backupData = (BackupArticleData) ois.readObject();
 
-                    String encodedIV = (String) ois.readObject();
-                    String articleUuid = (String) ois.readObject();
+            if (!merge) {
+                cleanDB();
+            }
 
-                    // Handle merging logic
-                    if (merge) {
-                        String checkSQL = "SELECT uuid FROM articles WHERE uuid = ?";
-                        ResultSet rs = databaseService.executeQuery(checkSQL, articleUuid);
-                        if (rs.next()) {
-                            // Article already exists, skipping it
-                            continue;
-                        }
+            // Restore groups first
+            for (ArticleGroup group : backupData.getGroups()) {
+                if (merge) {
+                    // Check if group exists
+                    String checkSQL = "SELECT id FROM article_groups WHERE id = ?";
+                    ResultSet rs = databaseService.executeQuery(checkSQL, group.getId());
+                    if (rs.next()) {
+                        // Update existing group
+                        databaseService.executeUpdate(
+                                "UPDATE article_groups SET name = ?, is_protected = ? WHERE id = ?",
+                                group.getName(), group.isProtected(), group.getId());
+                        continue;
                     }
-
-                    // Load the IV
-                    byte[] iv = Base64.getDecoder().decode(encodedIV);
-
-                    // Decrypt fields
-                    char[] title = decryptFieldToString(encryptedTitle, iv).toCharArray();
-                    char[][] authors = stringToCharArrays(decryptFieldToString(encryptedAuthors, iv));
-                    char[] abstractText = decryptFieldToString(encryptedAbstractText, iv).toCharArray();
-                    char[][] keywords = stringToCharArrays(decryptFieldToString(encryptedKeywords, iv));
-                    char[] body = decryptFieldToString(encryptedBody, iv).toCharArray();
-                    char[][] references = stringToCharArrays(decryptFieldToString(encryptedReferences, iv));
-                    List<Integer> groups = Arrays.asList(decryptFieldToString(encryptedGroups, iv).split(","))
-                            .stream()
-                            .map(Integer::parseInt)
-                            .collect(Collectors.toList());
-                    Topic level = Topic.valueOf(decryptFieldToString(encryptedLevel, iv));
-
-                    // Create and insert article
-                    HelpArticle article = new HelpArticle(articleUuid, title, authors, abstractText,
-                            keywords, body, references, groups, level);
-                    modifyArticle(article, false);
-                } catch (EOFException e) {
-                    break;
                 }
+
+                // Insert new group
+                databaseService.executeUpdate(
+                        "INSERT INTO article_groups (id, name, is_protected) VALUES (?, ?, ?)",
+                        group.getId(), group.getName(), group.isProtected());
+            }
+
+            // Restore encrypted articles directly
+            for (Map<String, String> encryptedArticle : backupData.getEncryptedArticles()) {
+                if (merge) {
+                    String checkSQL = "SELECT uuid FROM articles WHERE uuid = ?";
+                    ResultSet rs = databaseService.executeQuery(checkSQL, encryptedArticle.get("uuid"));
+                    if (rs.next()) {
+                        continue; // Skip existing articles in merge mode
+                    }
+                }
+
+                String insertSQL = """
+                            INSERT INTO articles (uuid, title, authors, abstract, keywords, body, references, level, iv)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """;
+
+                databaseService.executeUpdate(insertSQL,
+                        encryptedArticle.get("uuid"),
+                        encryptedArticle.get("title"),
+                        encryptedArticle.get("authors"),
+                        encryptedArticle.get("abstract"),
+                        encryptedArticle.get("keywords"),
+                        encryptedArticle.get("body"),
+                        encryptedArticle.get("references"),
+                        encryptedArticle.get("level"),
+                        encryptedArticle.get("iv"));
+            }
+
+            // Restore group users
+            for (ArticleGroupUser groupUser : backupData.getGroupUsers()) {
+                if (merge) {
+                    databaseService.executeUpdate(
+                            "DELETE FROM article_group_users WHERE group_id = ? AND user_id = ?",
+                            groupUser.getGroupId(), groupUser.getUserId());
+                }
+                databaseService.executeUpdate(
+                        "INSERT INTO article_group_users (group_id, user_id, is_admin) VALUES (?, ?, ?)",
+                        groupUser.getGroupId(), groupUser.getUserId(), groupUser.isAdmin());
+            }
+
+            // Restore group articles
+            for (ArticleGroupArticle groupArticle : backupData.getGroupArticles()) {
+                if (merge) {
+                    databaseService.executeUpdate(
+                            "DELETE FROM article_group_articles WHERE group_id = ? AND article_id = ?",
+                            groupArticle.getGroupId(), groupArticle.getArticleId());
+                }
+                databaseService.executeUpdate(
+                        "INSERT INTO article_group_articles (group_id, article_id) VALUES (?, ?)",
+                        groupArticle.getGroupId(), groupArticle.getArticleId());
             }
         }
     }
@@ -417,15 +473,6 @@ public class HelpArticleService {
                         group.getId(), userService.getUserByUsername(user.getUsername()).getUuid(),
                         user.isAdmin());
             }
-
-            // Add current user as admin if not in the list
-            boolean currentUserInList = users.stream()
-                    .anyMatch(u -> u.getUsername().equals(currentUser.getUsername()));
-            if (!currentUserInList) {
-                databaseService.executeUpdate(
-                        "INSERT INTO article_group_users (group_id, user_id, is_admin) VALUES (?, ?, true)",
-                        group.getId(), currentUser.getUuid());
-            }
         } else {
             // If no users specified, just add current user as admin
             databaseService.executeUpdate(
@@ -562,6 +609,9 @@ public class HelpArticleService {
     public boolean cleanDB() {
         try {
             databaseService.executeUpdate("DELETE FROM articles");
+            databaseService.executeUpdate("DELETE FROM article_groups");
+            databaseService.executeUpdate("DELETE FROM article_group_articles");
+            databaseService.executeUpdate("DELETE FROM article_group_users");
             return true;
         } catch (SQLException e) {
             return false;
@@ -570,11 +620,12 @@ public class HelpArticleService {
 
     // Add this method to send a help request
     public void sendHelpRequest(String userId, String message, String searchHistory) throws SQLException {
-        System.out.println("INFO: Sending help request with message: " + message + " and search history: " + searchHistory);
+        System.out.println(
+                "INFO: Sending help request with message: " + message + " and search history: " + searchHistory);
         String sql = """
-            INSERT INTO help_requests (user_id, message, search_history)
-            VALUES (?, ?, ?)
-        """;
+                    INSERT INTO help_requests (user_id, message, search_history)
+                    VALUES (?, ?, ?)
+                """;
         databaseService.executeUpdate(sql, userId, message, searchHistory);
     }
 }

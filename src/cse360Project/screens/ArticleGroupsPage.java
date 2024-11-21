@@ -15,6 +15,7 @@ import cse360Project.models.ArticleGroup;
 import cse360Project.models.HelpArticle;
 import cse360Project.models.Role;
 import cse360Project.models.User;
+import cse360Project.screens.ArticleGroupsPage.UserListItem;
 import cse360Project.services.EventService;
 import cse360Project.services.HelpArticleService;
 import cse360Project.services.UserService;
@@ -91,6 +92,8 @@ public class ArticleGroupsPage extends Application {
         primaryStage.show();
 
         loadGroups();
+
+        EventService.getInstance().addArticleGroupsPageListener(this::loadGroups);
     }
 
     @SuppressWarnings("unchecked")
@@ -346,7 +349,7 @@ public class ArticleGroupsPage extends Application {
                     e.printStackTrace();
                 }
                 loadGroups();
-                EventService.getInstance().notifyGroupUpdate();
+                EventService.getInstance().notifyHelpArticlesPage();
             }
             return null;
         });
@@ -412,10 +415,16 @@ public class ArticleGroupsPage extends Application {
         ListView<UserListItem> availableUsers = new ListView<>();
         availableUsers.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
-        // Load users from userService
+        // Get the usernames of already selected users
+        Set<String> existingUsernames = usersListView.getItems().stream()
+                .map(UserListItem::getUsername)
+                .collect(Collectors.toSet());
+
+        // Load users from userService, excluding already selected ones
         List<User> users = userService.getAllUsers();
         availableUsers.getItems().addAll(
                 users.stream()
+                        .filter(user -> !existingUsernames.contains(user.getUsername()))
                         .map(user -> new UserListItem(
                                 user.getUsername(),
                                 false,
@@ -448,7 +457,7 @@ public class ArticleGroupsPage extends Application {
             this.username = username;
 
             Label usernameLabel = new Label(username);
-            
+
             // Add roles label
             String roleText = roles.stream()
                     .map(Role::name)
@@ -463,9 +472,8 @@ public class ArticleGroupsPage extends Application {
                 adminCheckBox = new CheckBox("Admin rights");
                 adminCheckBox.setSelected(isAdmin);
 
-                // If this is the creator, disable the checkbox and add a note
+                // If this is the creator, add a note
                 if (isCreator) {
-                    adminCheckBox.setDisable(true);
                     usernameLabel.setText(username + " (Creator)");
                 }
 
@@ -496,8 +504,6 @@ public class ArticleGroupsPage extends Application {
             } else {
                 getChildren().addAll(usernameLabel, rolesLabel);
             }
-
-          
         }
 
         public String getUsername() {
@@ -547,7 +553,7 @@ public class ArticleGroupsPage extends Application {
                     try {
                         helpArticleService.deleteGroup(group.getId());
                         loadGroups(); // Refresh the table
-                        EventService.getInstance().notifyGroupUpdate();
+                        EventService.getInstance().notifyHelpArticlesPage();
                     } catch (Exception e) {
                         showError("Delete Failed", "Failed to delete group: " + e.getMessage());
                     }
@@ -572,7 +578,7 @@ public class ArticleGroupsPage extends Application {
 
     @Override
     public void stop() {
-        EventService.getInstance().removeAllGroupUpdateListeners();
+        EventService.getInstance().removeAllArticleGroupsPageListeners();
         try {
             super.stop();
         } catch (Exception e) {
